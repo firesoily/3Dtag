@@ -60,28 +60,29 @@ class TagCanvasWrapper {
     }
 
     /**
-     * 初始化 TagCanvas
+     * 初始化 TagCanvas（延迟到首次渲染）
      */
     async init() {
-        return new Promise((resolve, reject) => {
-            if (typeof TagCanvas === 'undefined') {
-                reject(new Error('TagCanvas library not loaded'));
-                return;
-            }
+        // 延迟初始化，等到首次 render 时再真正创建 TagCanvas 实例
+        this.initialized = true;
+        return Promise.resolve();
+    }
 
-            try {
-                this.tc = new TagCanvas(this.canvas, 'tags', this.options);
-                this.tc.textFont = 'bold 16px "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    /**
+     * 确保 TagCanvas 实例已创建
+     */
+    _ensureInitialized() {
+        if (this.tc) return; // 已经初始化
 
-                // 等待 TagCanvas 完成初始化
-                setTimeout(() => {
-                    this.initialized = true;
-                    resolve();
-                }, 100);
-            } catch (error) {
-                reject(error);
-            }
-        });
+        if (typeof TagCanvas === 'undefined') {
+            throw new Error('TagCanvas library not loaded');
+        }
+
+        // 创建实例
+        this.tc = new TagCanvas(this.canvas, 'tags', this.options);
+        this.tc.textFont = 'bold 16px "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+        console.log('TagCanvas initialized');
     }
 
     /**
@@ -90,11 +91,21 @@ class TagCanvasWrapper {
      */
     render(tags) {
         if (!this.initialized) {
-            console.error('TagCanvas not initialized');
+            console.warn('TagCanvasWrapper not initialized, calling init()');
+            // 自动初始化（如果还没初始化）
+            this.init().then(() => this.render(tags)).catch(console.error);
             return;
         }
 
         this.tags = tags;
+
+        // 确保 TagCanvas 实例已创建
+        try {
+            this._ensureInitialized();
+        } catch (e) {
+            console.error('Failed to initialize TagCanvas:', e);
+            return;
+        }
 
         // 转换为 TagCanvas 格式
         const tagElements = this._convertToTagCanvasFormat(tags);
@@ -103,6 +114,9 @@ class TagCanvasWrapper {
         const container = document.getElementById('tags');
         if (container) {
             container.innerHTML = '';
+        } else {
+            console.error('Tags container not found');
+            return;
         }
 
         tagElements.forEach(tag => {
@@ -115,7 +129,9 @@ class TagCanvasWrapper {
         });
 
         // 重新启动 TagCanvas
-        this.tc.Reload();
+        if (this.tc) {
+            this.tc.Reload();
+        }
     }
 
     /**
@@ -153,7 +169,7 @@ class TagCanvasWrapper {
         if (this.themes[themeName]) {
             this.currentTheme = themeName;
             if (this.tags.length > 0) {
-                this.render(this.tags);
+                this.render(this.tags); // 重新渲染会确保初始化
             }
         }
     }
@@ -163,7 +179,12 @@ class TagCanvasWrapper {
      * @param {string} keyword - 搜索关键词
      */
     filter(keyword) {
-        if (!this.tc) return;
+        if (!this.initialized) return;
+
+        // 确保 TagCanvas 已创建
+        if (!this.tc) {
+            this._ensureInitialized();
+        }
 
         const filtered = keyword
             ? this.tags.filter(tag => tag.word.toLowerCase().includes(keyword.toLowerCase()))
@@ -199,12 +220,12 @@ class TagCanvasWrapper {
      * 异步导出PNG（Promise版本）
      */
     async exportPNGAsync() {
-        return new Promise((resolve) => {
-            if (!this.canvas) {
-                resolve(null);
-                return;
-            }
+        if (!this.initialized || !this.tc) {
+            console.error('TagCanvas not initialized');
+            return null;
+        }
 
+        return new Promise((resolve) => {
             this.tc.stop();
 
             setTimeout(() => {

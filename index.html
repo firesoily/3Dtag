@@ -97,6 +97,8 @@
                 <canvas id="tagcanvas" width="800" height="600">
                     您的浏览器不支持Canvas，请升级到现代浏览器
                 </canvas>
+                <!-- TagCanvas required container (hidden) -->
+                <div id="tags" style="position: absolute; top: -9999px; left: -9999px;"></div>
                 <div id="loading-indicator" class="loading hidden">
                     <i class="fas fa-spinner fa-spin"></i>
                     处理中...
@@ -146,7 +148,7 @@
     </footer>
 
     <!-- Scripts -->
-    <script src="https://www.goat1000.com/tagcanvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tagcanvas@2.9/TagCanvas.min.js"></script>
     <script src="js/text-processor.js"></script>
     <script src="js/tagcanvas-wrapper.js"></script>
     <script src="js/app.js"></script>
