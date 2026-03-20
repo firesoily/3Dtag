@@ -43,21 +43,31 @@ class App {
 
     async init() {
         try {
+            console.log('App init: checking TagCanvas library...');
+            if (typeof TagCanvas === 'undefined') {
+                throw new Error('TagCanvas library not loaded (TagCanvas is undefined)');
+            }
+            console.log('TagCanvas library found:', typeof TagCanvas);
+
             // 初始化 TagCanvas
             const canvas = document.getElementById('tagcanvas');
+            console.log('Canvas element:', canvas);
             this.tagCloud = new TagCanvasWrapper(canvas);
             await this.tagCloud.init();
+            console.log('TagCloud initialized');
 
             // 绑定事件
             this.bindEvents();
+            console.log('Events bound');
 
             // 加载示例
             this.loadExampleText();
+            console.log('Example text loaded');
 
             console.log('3Dtag initialized successfully');
         } catch (error) {
             console.error('Failed to initialize:', error);
-            this.showError('初始化失败，请刷新页面重试');
+            this.showError('初始化失败，请刷新页面重试\n\n错误: ' + error.message);
         }
     }
 
@@ -134,7 +144,9 @@ class App {
     }
 
     async generate() {
+        console.log('Generate button clicked');
         const text = this.textInput.value.trim();
+        console.log('Input text length:', text.length);
 
         if (!text) {
             this.showError('请输入文本');
@@ -149,10 +161,13 @@ class App {
             await new Promise(resolve => setTimeout(resolve, 50));
 
             const limit = parseInt(this.tagLimitSlider.value);
+            console.log('Tag limit:', limit);
             const startTime = performance.now();
 
             // 处理文本
+            console.log('Calling TextProcessor.extractKeywords...');
             const tags = this.textProcessor.extractKeywords(text, { limit });
+            console.log('Extracted tags:', tags.length, tags);
 
             const endTime = performance.now();
             const processingTime = (endTime - startTime).toFixed(2);
@@ -168,7 +183,9 @@ class App {
             this.totalFrequency = tags.reduce((sum, t) => sum + t.count, 0);
 
             // 渲染标签云
+            console.log('Rendering tag cloud with', tags.length, 'tags');
             this.tagCloud.render(tags);
+            console.log('TagCloud.render() called');
 
             // 更新统计
             this.updateStats(tags.length, this.totalFrequency, processingTime);
@@ -177,7 +194,7 @@ class App {
 
         } catch (error) {
             console.error('Generate error:', error);
-            this.showError('处理失败，请检查文本格式');
+            this.showError('处理失败，请检查文本格式\n\n错误: ' + error.message);
             this.showLoading(false);
         }
     }
