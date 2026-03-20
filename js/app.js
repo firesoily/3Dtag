@@ -10,7 +10,7 @@ class App {
         this.generateBtn = document.getElementById('generate-btn');
         this.clearBtn = document.getElementById('clear-btn');
         this.tagLimitSlider = document.getElementById('tag-limit');
-        this.tagCountDisplay = document.getElementById('tag-count-dispan countDisplay);
+        this.tagCountDisplay = document.getElementById('tag-count-display');
         this.themeSelect = document.getElementById('theme-select');
         this.searchInput = document.getElementById('search-input');
         this.clearSearchBtn = document.getElementById('clear-search-btn');
