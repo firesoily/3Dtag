@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3Dtag - 3D智能标签云</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <i class="fas fa-cloud"></i>
+            <h1>3Dtag</h1>
+        </div>
+        <div class="header-links">
+            <a href="https://github.com/firesoily/3Dtag" target="_blank" title="GitHub">
+                <i class="fab fa-github"></i>
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        <!-- Left Control Panel -->
+        <aside class="control-panel">
+            <h2><i class="fas fa-edit"></i> 文本输入</h2>
+
+            <div class="input-section">
+                <textarea id="text-input" placeholder="在此粘贴或输入文本...&#10;&#10;支持中英文混合文本&#10;示例：&#10;人工智能是当今科技领域最热门的话题之一。Artificial Intelligence (AI) 正在改变我们的生活方式，从自动驾驶到智能助手，AI 无处不在。机器学习、深度学习、自然语言处理等技术让计算机能够理解、学习和创新。"></textarea>
+                <div class="button-group">
+                    <button id="generate-btn" class="btn btn-primary">
+                        <i class="fas fa-magic"></i> 生成标签云
+                    </button>
+                    <button id="clear-btn" class="btn btn-secondary">
+                        <i class="fas fa-trash"></i> 清空
+                    </button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3><i class="fas fa-sliders-h"></i> 设置</h3>
+
+                <div class="setting-item">
+                    <label for="tag-limit">标签数量: <span id="tag-count-display">50</span></label>
+                    <input type="range" id="tag-limit" min="10" max="200" value="50" step="10">
+                </div>
+
+                <div class="setting-item">
+                    <label for="theme-select">颜色主题:</label>
+                    <select id="theme-select">
+                        <option value="default">默认（词性配色）</option>
+                        <option value="ocean">海洋蓝</option>
+                        <option value="forest">森林绿</option>
+                        <option value="sunset">日落橙</option>
+                        <option value="galaxy">星河紫</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="stats-section">
+                <h3><i class="fas fa-chart-bar"></i> 统计</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">标签数</span>
+                        <span class="stat-value" id="stat-total">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">总词频</span>
+                        <span class="stat-value" id="stat-freq">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">处理时间</span>
+                        <span class="stat-value" id="stat-time">0ms</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="search-section">
+                <h3><i class="fas fa-search"></i> 搜索</h3>
+                <input type="text" id="search-input" placeholder="输入关键词过滤...">
+                <button id="clear-search-btn" class="btn btn-small">清除</button>
+            </div>
+
+            <div class="action-section">
+                <button id="export-btn" class="btn btn-primary btn-full">
+                    <i class="fas fa-download"></i> 导出PNG
+                </button>
+            </div>
+        </aside>
+
+        <!-- Right 3D Tag Cloud Canvas -->
+        <section class="tagcloud-section">
+            <div class="canvas-wrapper">
+                <canvas id="tagcanvas" width="800" height="600">
+                    您的浏览器不支持Canvas，请升级到现代浏览器
+                </canvas>
+                <div id="loading-indicator" class="loading hidden">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    处理中...
+                </div>
+            </div>
+
+            <div class="instruction-bar">
+                <span><i class="fas fa-hand-pointer"></i> 拖拽旋转</span>
+                <span><i class="fas fa-search-plus"></i> 滚轮缩放</span>
+                <span><i class="fas fa-mouse-pointer"></i> 点击查看详情</span>
+            </div>
+        </section>
+    </main>
+
+    <!-- Detail Modal -->
+    <div id="detail-modal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <h3><i class="fas fa-info-circle"></i> 标签详情</h3>
+            <div class="modal-body">
+                <div class="detail-row">
+                    <span class="detail-label">词语:</span>
+                    <span class="detail-value" id="detail-word"></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">词频:</span>
+                    <span class="detail-value" id="detail-count"></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">词性:</span>
+                    <span class="detail-value" id="detail-type"></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">占比:</span>
+                    <span class="detail-value" id="detail-percent"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>
+            3Dtag v1.0 |
+            <a href="#" id="help-link"><i class="fas fa-question-circle"></i> 使用帮助</a>
+        </p>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://www.goat1000.com/tagcanvas.min.js"></script>
+    <script src="js/text-processor.js"></script>
+    <script src="js/tagcanvas-wrapper.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
