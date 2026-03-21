@@ -45,9 +45,12 @@ class App {
         try {
             console.log('App init: checking Three.js library...');
             if (typeof THREE === 'undefined') {
-                throw new Error('TagCanvas library not loaded (TagCanvas is undefined)');
+                throw new Error('Three.js library not loaded (THREE is undefined)');
             }
             console.log('Three.js library found:', typeof THREE);
+
+            // 加载用户设置
+            this._loadSettings();
 
             // 初始化 TagCanvasWrapper (Three.js 实现)
             const canvas = document.getElementById('tagcanvas');
@@ -60,9 +63,14 @@ class App {
             this.bindEvents();
             console.log('Events bound');
 
-            // 加载示例
-            this.loadExampleText();
-            console.log('Example text loaded');
+            // 加载历史记录
+            this._loadHistory();
+
+            // 加载示例（如果用户没有保存输入）
+            if (!this.textInput.value.trim()) {
+                this.loadExampleText();
+            }
+            console.log('Example text loaded if needed');
 
             console.log('3Dtag initialized successfully');
         } catch (error) {
@@ -94,6 +102,7 @@ class App {
         // 主题切换
         this.themeSelect.addEventListener('change', (e) => {
             this.tagCloud.setTheme(e.target.value);
+            this._saveSettings(); // 自动保存偏好
         });
 
         // 搜索过滤
@@ -120,17 +129,28 @@ class App {
         });
 
         // 帮助链接
-        this.helpLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            alert(`使用说明：
-1. 在文本框输入或粘贴文本
-2. 点击"生成标签云"
-3. 拖拽旋转、滚轮缩放
-4. 悬停高亮、点击查看详情
-5. 搜索过滤、导出PNG
+        this.helpLink = document.getElementById('help-link');
+        this.helpModal = document.getElementById('help-modal');
+        this.helpClose = this.helpModal?.querySelector('.modal-close');
 
-支持中英文混合文本，最长建议1000字以内。`);
-        });
+        if (this.helpLink && this.helpModal) {
+            this.helpLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.helpModal.classList.remove('hidden');
+            });
+
+            if (this.helpClose) {
+                this.helpClose.addEventListener('click', () => {
+                    this.helpModal.classList.add('hidden');
+                });
+
+                this.helpModal.addEventListener('click', (e) => {
+                    if (e.target === this.helpModal) {
+                        this.helpModal.classList.add('hidden');
+                    }
+                });
+            }
+        }
 
         // 键盘快捷键
         document.addEventListener('keydown', (e) => {
@@ -153,6 +173,16 @@ class App {
             return;
         }
 
+        // 智能推荐标签数量（如果用户没有手动调整）
+        const recommendedLimit = this._recommendTagLimit(text);
+        const currentLimit = parseInt(this.tagLimitSlider.value);
+        if (Math.abs(currentLimit - recommendedLimit) > 10) {
+            // 差距较大，自动调整
+            this.tagLimitSlider.value = recommendedLimit;
+            this.tagCountDisplay.textContent = recommendedLimit;
+            console.log(`Auto-adjusted tag limit: ${currentLimit} → ${recommendedLimit}`);
+        }
+
         // 显示加载状态
         this.showLoading(true);
 
@@ -160,7 +190,29 @@ class App {
             // 使用 setTimeout 让 UI 有机会渲染加载状态
             await new Promise(resolve => setTimeout(resolve, 50));
 
-            const limit = parseInt(this.tagLimitSlider.value);
+            // 自适应标签数量（如果用户未手动调整）
+            let limit = parseInt(this.tagLimitSlider.value);
+            if (!this.userAdjustedLimit) {
+                const textLen = text.length;
+                if (textLen < 500) {
+                    limit = 30;
+                } else if (textLen < 1000) {
+                    limit = 50;
+                } else if (textLen < 3000) {
+                    limit = 80;
+                } else if (textLen < 5000) {
+                    limit = 120;
+                } else {
+                    limit = 150;
+                }
+                // 更新滑块和显示
+                this.tagLimitSlider.value = limit;
+                this.tagCountDisplay.textContent = limit;
+                console.log(`Auto-adjusted tag limit based on text length (${textLen} chars): ${limit}`);
+            } else {
+                console.log(`Using user-selected tag limit: ${limit}`);
+            }
+
             console.log('Tag limit:', limit);
             const startTime = performance.now();
 
@@ -191,6 +243,11 @@ class App {
             this.updateStats(tags.length, this.totalFrequency, processingTime);
 
             this.showLoading(false);
+
+            // ✅ 保存设置和历史
+            this._saveSettings();
+            this._saveToHistory(tags, text);
+            console.log('Settings and history saved after generation');
 
         } catch (error) {
             console.error('Generate error:', error);
@@ -293,6 +350,176 @@ Artificial Intelligence (AI) 正在改变我们的生活方式，从自动驾驶
 
     hideModal() {
         this.modal.classList.add('hidden');
+    }
+
+    // ====== Settings & History Management ======
+
+    /**
+     * 从 localStorage 加载用户设置
+     */
+    _loadSettings() {
+        try {
+            const saved = localStorage.getItem('3dtag-settings');
+            if (saved) {
+                const settings = JSON.parse(saved);
+                console.log('Loaded settings:', settings);
+
+                // 应用主题
+                if (settings.theme && this.themeSelect) {
+                    this.themeSelect.value = settings.theme;
+                }
+
+                // 应用标签数量
+                if (settings.tagLimit && this.tagLimitSlider) {
+                    this.tagLimitSlider.value = settings.tagLimit;
+                    this.tagCountDisplay.textContent = settings.tagLimit;
+                }
+
+                // 恢复上次输入的文本
+                if (settings.lastText && this.textInput) {
+                    this.textInput.value = settings.lastText;
+                }
+
+                // 恢复搜索关键词
+                if (settings.lastSearch && this.searchInput) {
+                    this.searchInput.value = settings.lastSearch;
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to load settings:', error);
+        }
+    }
+
+    /**
+     * 保存用户设置到 localStorage
+     */
+    _saveSettings() {
+        try {
+            const settings = {
+                theme: this.themeSelect?.value || 'default',
+                tagLimit: parseInt(this.tagLimitSlider?.value) || 50,
+                lastText: this.textInput?.value || '',
+                lastSearch: this.searchInput?.value || '',
+                savedAt: new Date().toISOString()
+            };
+            localStorage.setItem('3dtag-settings', JSON.stringify(settings));
+            console.log('Settings saved:', settings);
+        } catch (error) {
+            console.warn('Failed to save settings:', error);
+        }
+    }
+
+    /**
+     * 保存当前生成到历史记录
+     */
+    _saveToHistory(tags, text) {
+        if (!tags || tags.length === 0) return;
+
+        const record = {
+            id: Date.now(),
+            tags: tags.slice(0, 50), // 保存前50个标签
+            text: text.substring(0, 500), // 保存前500字原文
+            settings: {
+                theme: this.themeSelect?.value || 'default',
+                tagLimit: parseInt(this.tagLimitSlider?.value) || 50
+            },
+            stats: {
+                total: tags.length,
+                totalFreq: tags.reduce((sum, t) => sum + t.count, 0),
+                byType: this._countByType(tags)
+            },
+            createdAt: new Date().toISOString()
+        };
+
+        // 添加到头部
+        this.history.unshift(record);
+
+        // 只保留最近10条
+        if (this.history.length > 10) {
+            this.history = this.history.slice(0, 10);
+        }
+
+        // 保存到 localStorage
+        try {
+            localStorage.setItem('3dtag-history', JSON.stringify(this.history));
+            console.log('History saved, total records:', this.history.length);
+        } catch (error) {
+            console.warn('Failed to save history:', error);
+        }
+    }
+
+    /**
+     * 从 localStorage 加载历史记录
+     */
+    _loadHistory() {
+        try {
+            const saved = localStorage.getItem('3dtag-history');
+            if (saved) {
+                this.history = JSON.parse(saved);
+                console.log('History loaded, records:', this.history.length);
+            }
+        } catch (error) {
+            console.warn('Failed to load history:', error);
+            this.history = [];
+        }
+    }
+
+    /**
+     * 统计标签类型分布
+     */
+    _countByType(tags) {
+        const counts = { noun: 0, verb: 0, adj: 0, other: 0 };
+        tags?.forEach(tag => {
+            if (counts[tag.type] !== undefined) counts[tag.type]++;
+        });
+        return counts;
+    }
+
+    /**
+     * 根据文本自动推荐标签数量
+     */
+    _recommendTagLimit(text) {
+        if (!text) return 50;
+
+        const chineseChars = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+        const englishWords = (text.match(/[a-zA-Z]+/g) || []).length;
+        const totalChars = text.length;
+
+        let recommended;
+        if (chineseChars > totalChars * 0.6) {
+            recommended = Math.floor(chineseChars / 10);
+        } else {
+            recommended = Math.floor(englishWords / 8);
+        }
+
+        recommended = Math.max(20, Math.min(100, recommended));
+
+        if (totalChars > 3000) {
+            recommended = Math.min(recommended, 80);
+        } else if (totalChars < 200) {
+            recommended = Math.min(recommended, 30);
+        }
+
+        return recommended;
+    }
+
+    /**
+     * 更新搜索匹配计数显示
+     */
+    updateSearchCount(matched, total) {
+        const countEl = document.getElementById('match-count');
+        const totalEl = document.getElementById('total-count');
+        const container = document.getElementById('search-count');
+
+        if (countEl && totalEl && container) {
+            countEl.textContent = matched;
+            totalEl.textContent = total;
+            if (matched > 0 || total > 0) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
     }
 }
 

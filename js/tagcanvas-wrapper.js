@@ -23,9 +23,21 @@ class TagCanvasWrapper {
         this.textMeshes = [];
         this.isDragging = false;
         this.previousMousePosition = { x: 0, y: 0 };
+        this.currentMousePosition = { x: -100, y: -100 }; // 初始在屏幕外
         this.rotationVelocity = { x: 0, y: 0 };
         this.autoRotate = true;
         this.autoRotateSpeed = 0.001;
+
+        // 动画相关
+        this.animatingTags = new Map(); // tag word -> { targetScale, currentScale, startTime, duration }
+        this.hoveredTag = null;
+        this.animationDuration = 800; // ms
+
+        // 性能监控（调试用）
+        this.debugFPS = false;
+        this.frameCount = 0;
+        this.lastFpsUpdate = 0;
+        this.fps = 0;
     }
 
     async init() {
@@ -69,6 +81,12 @@ class TagCanvasWrapper {
         });
 
         this.canvas.addEventListener('mousemove', (e) => {
+            // 总是更新鼠标位置（用于悬停检测）
+            this.currentMousePosition = {
+                x: e.clientX,
+                y: e.clientY
+            };
+
             if (this.isDragging) {
                 const deltaMove = {
                     x: e.clientX - this.previousMousePosition.x,
@@ -104,6 +122,59 @@ class TagCanvasWrapper {
             this._handleClick(e);
         });
 
+        // 触摸支持
+        let initialTouchDistance = 0;
+        let initialCameraZ = this.camera.position.z;
+
+        this.canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                // 单指：开始旋转
+                this.isDragging = true;
+                this.autoRotate = false;
+                this.previousMousePosition = {
+                    x: e.touches[0].clientX,
+                    y: e.touches[0].clientY
+                };
+            } else if (e.touches.length === 2) {
+                // 双指：开始缩放
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                initialTouchDistance = Math.sqrt(dx * dx + dy * dy);
+                initialCameraZ = this.camera.position.z;
+            }
+        }, { passive: false });
+
+        this.canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 1 && this.isDragging) {
+                // 单指拖动旋转
+                const deltaMove = {
+                    x: e.touches[0].clientX - this.previousMousePosition.x,
+                    y: e.touches[0].clientY - this.previousMousePosition.y
+                };
+                this.rotationVelocity.y = deltaMove.x * 0.005;
+                this.rotationVelocity.x = deltaMove.y * 0.005;
+                this.previousMousePosition = {
+                    x: e.touches[0].clientX,
+                    y: e.touches[0].clientY
+                };
+            } else if (e.touches.length === 2) {
+                // 双指缩放
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const scale = initialTouchDistance / distance;
+                const newZ = Math.max(100, Math.min(500, initialCameraZ * scale));
+                this.camera.position.z = newZ;
+            }
+        }, { passive: false });
+
+        this.canvas.addEventListener('touchend', () => {
+            this.isDragging = false;
+            setTimeout(() => { this.autoRotate = true; }, 3000);
+        });
+
         // 窗口大小调整
         window.addEventListener('resize', () => {
             const width = this.canvas.clientWidth || 800;
@@ -117,6 +188,18 @@ class TagCanvasWrapper {
     _animate() {
         requestAnimationFrame(() => this._animate());
 
+        // FPS 计算
+        if (this.debugFPS) {
+            this.frameCount++;
+            const now = performance.now();
+            if (now - this.lastFpsUpdate >= 1000) {
+                this.fps = this.frameCount;
+                this.frameCount = 0;
+                this.lastFpsUpdate = now;
+                console.log(`[TagCanvas] FPS: ${this.fps}, tags: ${this.tags.length}`);
+            }
+        }
+
         if (this.autoRotate) {
             this.scene.rotation.y += this.autoRotateSpeed;
         } else {
@@ -127,7 +210,105 @@ class TagCanvasWrapper {
             this.rotationVelocity.y *= 0.95;
         }
 
+        // 更新标签动画
+        this._updateAnimations();
+        this._checkHover();
+
         this.renderer.render(this.scene, this.camera);
+    }
+
+    /**
+     * 检测鼠标悬停并应用放大效果
+     */
+    _checkHover() {
+        // 如果有正在进行的动画（入场或脉冲），不应用悬停效果
+        if (this.animatingTags.size > 0) return;
+
+        const rect = this.canvas.getBoundingClientRect();
+        const mouse = new THREE.Vector2();
+        mouse.x = ((this.currentMousePosition.x - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((this.currentMousePosition.y - rect.top) / rect.height) * 2 + 1;
+
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, this.camera);
+
+        const intersects = raycaster.intersectObjects(this.textMeshes);
+
+        if (intersects.length > 0) {
+            const hoveredWord = intersects[0].object.userData.word;
+            if (hoveredWord !== this.hoveredTag) {
+                // 恢复上一个悬停标签
+                if (this.hoveredTag) {
+                    this._resetTagScale(this.hoveredTag);
+                }
+                // 放大新悬停标签
+                this.hoveredTag = hoveredWord;
+                this._scaleTag(hoveredWord, 1.3);
+            }
+        } else if (this.hoveredTag) {
+            // 鼠标离开，恢复
+            this._resetTagScale(this.hoveredTag);
+            this.hoveredTag = null;
+        }
+    }
+
+    /**
+     * 设置标签缩放（叠加到基础缩放）
+     */
+    _scaleTag(word, factor) {
+        const sprite = this.textMeshes.find(m => m.userData.word === word);
+        if (sprite && sprite.userData.baseScale) {
+            const base = sprite.userData.baseScale;
+            sprite.scale.set(
+                base.x * factor,
+                base.y * factor,
+                base.z * factor
+            );
+        }
+    }
+
+    /**
+     * 重置标签到基础缩放
+     */
+    _resetTagScale(word) {
+        const sprite = this.textMeshes.find(m => m.userData.word === word);
+        if (sprite && sprite.userData.baseScale) {
+            const base = sprite.userData.baseScale;
+            sprite.scale.set(base.x, base.y, base.z);
+        }
+    }
+    _updateAnimations() {
+        const now = performance.now();
+        const toRemove = [];
+
+        this.animatingTags.forEach((anim, word) => {
+            const { startTime, duration, startScale, targetScale } = anim;
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+
+            // 使用缓动函数：easeOutQuad
+            const eased = 1 - (1 - progress) * (1 - progress);
+
+            const currentScale = startScale + (targetScale - startScale) * eased;
+
+            // 找到对应的 sprite 并更新缩放
+            const sprite = this.textMeshes.find(m => m.userData.word === word);
+            if (sprite) {
+                const baseScale = sprite.userData.baseScale || { x: 1, y: 0.5, z: 1 };
+                sprite.scale.set(
+                    baseScale.x * currentScale,
+                    baseScale.y * currentScale,
+                    baseScale.z * currentScale
+                );
+            }
+
+            if (progress >= 1) {
+                toRemove.push(word);
+            }
+        });
+
+        // 移除完成的动画
+        toRemove.forEach(word => this.animatingTags.delete(word));
     }
 
     _createTextTexture(text, color, weight) {
@@ -163,11 +344,14 @@ class TagCanvasWrapper {
         return points;
     }
 
-    render(tags) {
+    render(tags, isFiltered = false) {
         if (!this.initialized) {
             console.warn('TagCanvasWrapper not initialized');
             return;
         }
+
+        // 重置悬停状态（因为场景清空）
+        this.hoveredTag = null;
 
         // 清除旧标签
         this.textMeshes.forEach(mesh => {
@@ -178,7 +362,7 @@ class TagCanvasWrapper {
         this.textMeshes = [];
 
         this.tags = tags;
-        this.filteredTags = tags;
+        // 注意：filteredTags 由 filter() 方法维护，这里只更新显示
 
         if (tags.length === 0) return;
 
@@ -198,18 +382,48 @@ class TagCanvasWrapper {
             const colorMap = { noun: theme.noun, verb: theme.verb, adj: theme.adj, other: theme.other };
             const color = colorMap[tag.type] || theme.other;
 
+            // 高亮逻辑：如果处于过滤模式，只有匹配的关键词才高亮（不透明），其他降低透明度
+            let alpha = 1.0;
+            if (isFiltered && this.matchedSet && !this.matchedSet.has(tag.word)) {
+                alpha = 0.2; // 非匹配标签变半透明
+            }
+
             const texture = this._createTextTexture(tag.word, color, weight);
-            const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const material = new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                opacity: alpha,
+                depthWrite: false // 避免透明渲染问题
+            });
             const sprite = new THREE.Sprite(material);
 
             const pos = positions[index];
             sprite.position.copy(pos);
-            sprite.scale.set(weight * 0.8, weight * 0.4, 1);
 
-            sprite.userData = { word: tag.word, count: tag.count, type: tag.type };
+            // 基础缩放（根据权重）
+            const baseScaleX = weight * 0.8;
+            const baseScaleY = weight * 0.4;
+            const baseScaleZ = 1;
+            sprite.scale.set(0, 0, 0); // 初始为0，通过动画展开
+
+            // 保存基础缩放到 userData，供动画使用
+            sprite.userData = {
+                word: tag.word,
+                count: tag.count,
+                type: tag.type,
+                baseScale: { x: baseScaleX, y: baseScaleY, z: baseScaleZ }
+            };
 
             this.scene.add(sprite);
             this.textMeshes.push(sprite);
+
+            // 🎬 添加入场动画
+            this.animatingTags.set(tag.word, {
+                startTime: performance.now() + (index * 20), // 错开 20ms 产生波浪效果
+                duration: this.animationDuration,
+                startScale: 0,
+                targetScale: 1
+            });
         });
     }
 
@@ -225,12 +439,36 @@ class TagCanvasWrapper {
     filter(keyword) {
         if (!this.initialized) return;
 
-        const filtered = keyword
-            ? this.tags.filter(tag => tag.word.toLowerCase().includes(keyword.toLowerCase()))
+        const keywords = keyword
+            ? keyword.toLowerCase().split(/\s+/).filter(k => k.length > 0)
+            : [];
+
+        // 找到匹配的标签
+        const matchedSet = new Set();
+        if (keywords.length > 0) {
+            this.tags.forEach(tag => {
+                const wordLower = tag.word.toLowerCase();
+                const isMatch = keywords.every(k => wordLower.includes(k));
+                if (isMatch) {
+                    matchedSet.add(tag.word);
+                }
+            });
+        }
+
+        // 过滤显示：如果有关键词，只显示匹配的；否则显示全部
+        const filtered = keywords.length > 0
+            ? this.tags.filter(tag => matchedSet.has(tag.word))
             : this.tags;
 
         this.filteredTags = filtered;
-        this.render(filtered);
+        this.matchedSet = matchedSet; // 保存匹配集合用于高亮
+
+        // 通知 App 更新匹配计数
+        if (window.app && window.app.updateSearchCount) {
+            window.app.updateSearchCount(matchedSet.size, this.tags.length);
+        }
+
+        this.render(filtered, keywords.length > 0);
     }
 
     async exportPNGAsync() {
@@ -239,6 +477,110 @@ class TagCanvasWrapper {
             const dataUrl = this.canvas.toDataURL('image/png');
             resolve(dataUrl);
         });
+    }
+
+    /**
+     * 导出为 SVG 矢量图（基于当前视图的 3D 投影）
+     * @param {object} options - 导出选项
+     * @returns {string} SVG 字符串
+     */
+    exportSVGAsync(options = {}) {
+        return new Promise((resolve) => {
+            // 确保矩阵是最新的
+            this.scene.updateMatrixWorld();
+            this.camera.updateMatrixWorld();
+
+            const width = options.width || 800;
+            const height = options.height || 600;
+            const backgroundColor = options.backgroundColor || '#ffffff';
+            const fontFamily = options.fontFamily || 'Arial, sans-serif';
+
+            // SVG 头部
+            let svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="${backgroundColor}"/>
+  <g>`;
+
+            const theme = this.themes[this.currentTheme];
+            const colorMap = { noun: theme.noun, verb: theme.verb, adj: theme.adj, other: theme.other };
+
+            // 相机投影参数
+            const fov = this.camera.fov * Math.PI / 180;
+            const f = 1 / Math.tan(fov / 2);
+            const aspect = width / height;
+
+            // 世界坐标转屏幕坐标
+            const project = (worldPos) => {
+                // 视图空间
+                const viewPos = worldPos.clone().applyMatrix4(this.camera.matrixWorldInverse);
+                // 检查是否在相机前方
+                if (-viewPos.z <= 0.001) return null;
+                const x_ndc = (viewPos.x * f / aspect) / -viewPos.z;
+                const y_ndc = (viewPos.y * f) / -viewPos.z;
+                // NDC 转屏幕
+                const screenX = (x_ndc + 1) * 0.5 * width;
+                const screenY = (1 - (y_ndc + 1) * 0.5) * height;
+                return { x: screenX, y: screenY };
+            };
+
+            // 遍历当前显示的标签（this.textMeshes）
+            this.textMeshes.forEach(sprite => {
+                const { word, type, baseScale } = sprite.userData;
+                if (!word || !baseScale) return;
+
+                // 获取世界坐标
+                const worldPos = new THREE.Vector3();
+                sprite.getWorldPosition(worldPos);
+
+                const screenPos = project(worldPos);
+                if (!screenPos) return; // 在相机后面
+
+                // 颜色
+                const color = colorMap[type] || theme.other;
+
+                // 字体大小：baseScale.x ≈ weight * 0.8
+                const weight = Math.max(10, Math.min(40, baseScale.x / 0.8));
+                const fontSize = Math.round(weight);
+
+                svg += `
+    <text x="${screenPos.x.toFixed(1)}" y="${screenPos.y.toFixed(1)}"
+          font-family="${fontFamily}"
+          font-size="${fontSize}px"
+          font-weight="bold"
+          fill="${color}"
+          text-anchor="middle"
+          dominant-baseline="central"
+          style="text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">
+      ${this._escapeXml(word)}
+    </text>`;
+            });
+
+            svg += `
+</svg>`;
+
+            resolve(svg);
+        });
+    }
+
+    /**
+     * XML 特殊字符转义
+     */
+    _escapeXml(text) {
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
+    }
+
+    setTheme(themeName) {
+        if (this.themes[themeName]) {
+            this.currentTheme = themeName;
+            // 保持当前的过滤状态重新渲染
+            const isFiltered = this.searchInput && this.searchInput.value.trim().length > 0;
+            this.render(this.filteredTags || this.tags, isFiltered);
+        }
     }
 
     getStats() {
@@ -278,9 +620,41 @@ class TagCanvasWrapper {
                         tagData.type,
                         window.app.totalFrequency
                     );
+
+                    // 💫 触发脉冲动画
+                    this._triggerPulse(object);
                 }
             }
         }
+    }
+
+    /**
+     * 触发脉冲动画（点击反馈）
+     */
+    _triggerPulse(sprite) {
+        const word = sprite.userData.word;
+        // 如果已经有入场动画在运行，取消它
+        if (this.animatingTags.has(word)) {
+            this.animatingTags.delete(word);
+        }
+
+        // 脉冲动画：先放大到 1.3 倍，再回到 1.0
+        this.animatingTags.set(word, {
+            startTime: performance.now(),
+            duration: 300,
+            startScale: 1.0,
+            targetScale: 1.3
+        });
+
+        // 延迟后回到原大小
+        setTimeout(() => {
+            this.animatingTags.set(word, {
+                startTime: performance.now(),
+                duration: 300,
+                startScale: 1.3,
+                targetScale: 1.0
+            });
+        }, 300);
     }
 }
 

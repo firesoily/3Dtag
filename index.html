@@ -26,7 +26,12 @@
     <main class="main-container">
         <!-- Left Control Panel -->
         <aside class="control-panel">
-            <h2><i class="fas fa-edit"></i> 文本输入</h2>
+            <div class="panel-header">
+                <h2><i class="fas fa-edit"></i> 控制面板</h2>
+                <button id="toggle-panel" class="btn btn-icon mobile-only" title="折叠/展开">
+                    <i class="fas fa-chevron-up"></i>
+                </button>
+            </div>
 
             <div class="input-section">
                 <textarea id="text-input" placeholder="在此粘贴或输入文本...&#10;&#10;支持中英文混合文本&#10;示例：&#10;人工智能是当今科技领域最热门的话题之一。Artificial Intelligence (AI) 正在改变我们的生活方式，从自动驾驶到智能助手，AI 无处不在。机器学习、深度学习、自然语言处理等技术让计算机能够理解、学习和创新。"></textarea>
@@ -82,12 +87,30 @@
                 <h3><i class="fas fa-search"></i> 搜索</h3>
                 <input type="text" id="search-input" placeholder="输入关键词过滤...">
                 <button id="clear-search-btn" class="btn btn-small">清除</button>
+                <div id="search-count" class="search-count hidden">
+                    找到 <span id="match-count">0</span> / <span id="total-count">0</span> 个标签
+                </div>
             </div>
 
             <div class="action-section">
-                <button id="export-btn" class="btn btn-primary btn-full">
-                    <i class="fas fa-download"></i> 导出PNG
-                </button>
+                <div class="export-controls">
+                    <div class="export-buttons">
+                        <button id="export-png-btn" class="btn btn-primary export-btn">
+                            <i class="fas fa-download"></i> 导出 PNG
+                        </button>
+                        <button id="export-svg-btn" class="btn btn-secondary export-btn">
+                            <i class="fas fa-file-image"></i> 导出 SVG
+                        </button>
+                    </div>
+                    <div class="resolution-selector">
+                        <label>分辨率:</label>
+                        <select id="export-resolution">
+                            <option value="1">1x (原始)</option>
+                            <option value="2" selected>2x (高清)</option>
+                            <option value="4">4x (超清)</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </aside>
 
@@ -135,6 +158,86 @@
                     <span class="detail-label">占比:</span>
                     <span class="detail-value" id="detail-percent"></span>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+            <button class="modal-close">&times;</button>
+            <h3><i class="fas fa-question-circle"></i> 使用帮助</h3>
+            <div class="modal-body">
+                <section>
+                    <h4>📝 基本操作</h4>
+                    <ol>
+                        <li>在文本框输入或粘贴文本（支持中英文混合）</li>
+                        <li>拖动"标签数量"滑块调整显示的关键词数量</li>
+                        <li>点击"生成标签云"按钮</li>
+                        <li>等待2秒内完成渲染</li>
+                    </ol>
+                </section>
+
+                <section>
+                    <h4>🖱️ 交互操作</h4>
+                    <ul>
+                        <li><strong>旋转</strong>：按住鼠标左键拖动（移动端单指滑动）</li>
+                        <li><strong>缩放</strong>：滚动鼠标滚轮（移动端双指捏合）</li>
+                        <li><strong>自动旋转</strong>：3秒无操作后自动旋转恢复</li>
+                        <li><strong>查看详情</strong>：点击任意标签查看词语、频率、词性、占比</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h4>🔍 搜索过滤</h4>
+                    <ul>
+                        <li>在搜索框输入关键词（支持多个，空格分隔）</li>
+                        <li>使用 AND 逻辑：同时包含所有关键词的标签才会显示</li>
+                        <li>匹配标签保持高亮，不匹配的透明至20%</li>
+                        <li>实时显示匹配计数：`X / Y`</li>
+                        <li>点击"清除"恢复全部显示</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h4>🎨 主题与导出</h4>
+                    <ul>
+                        <li><strong>主题</strong>：下拉选择配色方案，切换自动保存偏好</li>
+                        <li><strong>PNG导出</strong>：快速图片导出，可选择2x高清（分辨率翻倍）</li>
+                        <li><strong>SVG导出</strong>：矢量格式，适合印刷和无限缩放，可自定义尺寸</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h4>💾 设置与历史</h4>
+                    <ul>
+                        <li>主题、标签数量、输入文本、搜索关键词自动保存</li>
+                        <li>最近10次生成记录保存在本地</li>
+                        <li>刷新页面后自动恢复上次状态</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h4>📱 移动端支持</h4>
+                    <ul>
+                        <li>响应式布局：控制面板在上方，标签云填充剩余空间</li>
+                        <li>触摸手势：单指旋转、双指缩放</li>
+                        <li>触摸目标≥44px，符合可访问性标准</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h4>⚡ 性能建议</h4>
+                    <ul>
+                        <li>文本长度建议<3000字，标签数量<100以获得最佳体验</li>
+                        <li>移动端建议标签数量≤80</li>
+                        <li>使用Chrome/Firefox/Safari最新版本</li>
+                    </ul>
+                </section>
+
+                <p class="help-footer">如有问题或建议，请访问项目仓库：<br>
+                <a href="https://github.com/firesoily/3Dtag" target="_blank">https://github.com/firesoily/3Dtag</a>
+                </p>
             </div>
         </div>
     </div>
