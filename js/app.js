@@ -43,13 +43,13 @@ class App {
 
     async init() {
         try {
-            console.log('App init: checking TagCanvas library...');
-            if (typeof TagCanvas === 'undefined') {
+            console.log('App init: checking Three.js library...');
+            if (typeof THREE === 'undefined') {
                 throw new Error('TagCanvas library not loaded (TagCanvas is undefined)');
             }
-            console.log('TagCanvas library found:', typeof TagCanvas);
+            console.log('Three.js library found:', typeof THREE);
 
-            // 初始化 TagCanvas
+            // 初始化 TagCanvasWrapper (Three.js 实现)
             const canvas = document.getElementById('tagcanvas');
             console.log('Canvas element:', canvas);
             this.tagCloud = new TagCanvasWrapper(canvas);
