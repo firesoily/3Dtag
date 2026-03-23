@@ -36,6 +36,7 @@ class App {
         // 状态
         this.currentTags = [];
         this.totalFrequency = 0;
+        this.history = []; // 初始化历史记录为空数组
 
         // 初始化
         this.init();
