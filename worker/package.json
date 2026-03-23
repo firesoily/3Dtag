@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:push": "wrangler d1 execute 3dtag-auth-db --file=src/db/schema.sql --remote"
+    "db:push": "wrangler d1 execute 3dtag-auth-db --file=src/db/schema.sql --remote",
+    "build": "echo 'No build needed for Worker'"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250501.0",
