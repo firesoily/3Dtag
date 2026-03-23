@@ -1,0 +1,23 @@
+name = "3dtag-auth"
+main = "src/index.js"
+compatibility_date = "2025-03-01"
+compatibility_flags = ["nodejs_compat"]
+
+# 绑定 D1 数据库
+[[d1_databases]]
+binding = "DB"
+database_name = "3dtag-auth-db"
+database_id = "YOUR_D1_DATABASE_ID"  # 部署后自动生成，或在此处填入
+
+# 环境变量（敏感信息通过 wrangler secret 设置，不要在此处写入）
+# 示例：
+# CLIENT_ID = "your-client-id"
+# CLIENT_SECRET = "your-client-secret"
+
+# 生产环境配置
+[env.production]
+routes = ["auth.3dtag.shop/*"]  # 子域名用于认证
+
+# 开发环境（使用本地测试域名）
+[env.development]
+routes = ["3dtag-auth.workers.dev/*"]

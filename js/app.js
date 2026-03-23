@@ -37,6 +37,7 @@ class App {
         this.currentTags = [];
         this.totalFrequency = 0;
         this.history = []; // 初始化历史记录为空数组
+        this.isAuthenticated = false; // 是否已登录
 
         // 初始化
         this.init();
@@ -50,9 +51,6 @@ class App {
             }
             console.log('Three.js library found:', typeof THREE);
 
-            // 加载用户设置
-            this._loadSettings();
-
             // 初始化 TagCanvasWrapper (Three.js 实现)
             const canvas = document.getElementById('tagcanvas');
             console.log('Canvas element:', canvas);
@@ -64,8 +62,8 @@ class App {
             this.bindEvents();
             console.log('Events bound');
 
-            // 加载历史记录
-            this._loadHistory();
+            // 加载用户数据（云端或本地）
+            await this.loadAuthData();
 
             // 加载示例（如果用户没有保存输入）
             if (!this.textInput.value.trim()) {
@@ -358,7 +356,7 @@ Artificial Intelligence (AI) 正在改变我们的生活方式，从自动驾驶
     /**
      * 从 localStorage 加载用户设置
      */
-    _loadSettings() {
+    _loadSettingsLocal() {
         try {
             const saved = localStorage.getItem('3dtag-settings');
             if (saved) {
@@ -405,6 +403,13 @@ Artificial Intelligence (AI) 正在改变我们的生活方式，从自动驾驶
             };
             localStorage.setItem('3dtag-settings', JSON.stringify(settings));
             console.log('Settings saved:', settings);
+
+            // 如果已登录，同时保存到云端（不阻塞）
+            if (this.isAuthenticated && window.AuthClient?.saveUserData) {
+                window.AuthClient.saveUserData('settings', settings).catch(err => {
+                    console.warn('Failed to save settings to cloud:', err);
+                });
+            }
         } catch (error) {
             console.warn('Failed to save settings:', error);
         }
@@ -444,6 +449,13 @@ Artificial Intelligence (AI) 正在改变我们的生活方式，从自动驾驶
         try {
             localStorage.setItem('3dtag-history', JSON.stringify(this.history));
             console.log('History saved, total records:', this.history.length);
+
+            // 如果已登录，同时保存到云端（不阻塞）
+            if (this.isAuthenticated && window.AuthClient?.saveUserData) {
+                window.AuthClient.saveUserData('history', this.history).catch(err => {
+                    console.warn('Failed to save history to cloud:', err);
+                });
+            }
         } catch (error) {
             console.warn('Failed to save history:', error);
         }
@@ -452,7 +464,7 @@ Artificial Intelligence (AI) 正在改变我们的生活方式，从自动驾驶
     /**
      * 从 localStorage 加载历史记录
      */
-    _loadHistory() {
+    _loadHistoryFromLocal() {
         try {
             const saved = localStorage.getItem('3dtag-history');
             if (saved) {
@@ -462,6 +474,68 @@ Artificial Intelligence (AI) 正在改变我们的生活方式，从自动驾驶
         } catch (error) {
             console.warn('Failed to load history:', error);
             this.history = [];
+        }
+    }
+
+    /**
+     * 加载用户数据（检查登录状态，云端或本地）
+     */
+    async loadAuthData() {
+        try {
+            const result = await window.AuthClient.getCurrentUser();
+            this.isAuthenticated = result.authenticated;
+            console.log('Auth status:', this.isAuthenticated ? 'logged in' : 'guest');
+
+            if (this.isAuthenticated) {
+                // 已登录：尝试从云端加载
+                const [cloudSettings, cloudHistory] = await Promise.all([
+                    window.AuthClient.getUserData('settings'),
+                    window.AuthClient.getUserData('history')
+                ]);
+
+                if (cloudSettings) {
+                    // 应用云端设置到UI
+                    if (cloudSettings.theme && this.themeSelect) this.themeSelect.value = cloudSettings.theme;
+                    if (cloudSettings.tagLimit && this.tagLimitSlider) {
+                        this.tagLimitSlider.value = cloudSettings.tagLimit;
+                        this.tagCountDisplay.textContent = cloudSettings.tagLimit;
+                    }
+                    if (cloudSettings.lastText && this.textInput) this.textInput.value = cloudSettings.lastText;
+                    if (cloudSettings.lastSearch && this.searchInput) this.searchInput.value = cloudSettings.lastSearch;
+                    // 同时更新本地缓存
+                    localStorage.setItem('3dtag-settings', JSON.stringify(cloudSettings));
+                } else {
+                    this._loadSettingsLocal();
+                }
+
+                if (cloudHistory && Array.isArray(cloudHistory)) {
+                    this.history = cloudHistory;
+                    localStorage.setItem('3dtag-history', JSON.stringify(cloudHistory));
+                } else {
+                    this._loadHistoryFromLocal();
+                }
+
+                // 迁移本地历史到云端（如果云端无但本地有）
+                const localHistoryStr = localStorage.getItem('3dtag-history');
+                if (localHistoryStr && (!cloudHistory || cloudHistory.length === 0)) {
+                    try {
+                        const localHistory = JSON.parse(localHistoryStr);
+                        if (localHistory.length > 0) {
+                            await window.AuthClient.saveUserData('history', localHistory);
+                            console.log('Migrated local history to cloud');
+                        }
+                    } catch (e) {}
+                }
+
+            } else {
+                // 未登录：使用本地数据
+                this._loadSettingsLocal();
+                this._loadHistoryFromLocal();
+            }
+        } catch (err) {
+            console.error('Failed to load auth data:', err);
+            this._loadSettingsLocal();
+            this._loadHistoryFromLocal();
         }
     }
 

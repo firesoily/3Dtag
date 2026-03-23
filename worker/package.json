@@ -1,0 +1,19 @@
+{
+  "name": "3dtag-auth",
+  "version": "1.0.0",
+  "description": "Google OAuth authentication worker for 3Dtag",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:push": "wrangler d1 execute 3dtag-auth-db --file=src/db/schema.sql --remote"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250501.0",
+    "wrangler": "^4.14.1"
+  },
+  "dependencies": {
+    "cookie": "^1.0.2"
+  }
+}
