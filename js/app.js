@@ -14,7 +14,7 @@ class App {
         this.themeSelect = document.getElementById('theme-select');
         this.searchInput = document.getElementById('search-input');
         this.clearSearchBtn = document.getElementById('clear-search-btn');
-        this.exportBtn = document.getElementById('export-btn');
+        this.exportBtn = document.getElementById('export-png-btn');
         this.loadingIndicator = document.getElementById('loading-indicator');
         this.modal = document.getElementById('detail-modal');
         this.modalClose = document.querySelector('.modal-close');
