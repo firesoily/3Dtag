@@ -3,7 +3,8 @@
  * 挂载到 window.AuthClient
  */
 
-const AUTH_WORKER_URL = 'https://auth.3dtag.shop'; // 根据实际部署修改
+// Temporary: using workers.dev subdomain while DNS propagates
+const AUTH_WORKER_URL = 'https://3dtag-auth-production.fenjohn466.workers.dev';
 
 window.AuthClient = {
     getCurrentUser,

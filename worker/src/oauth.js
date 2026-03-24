@@ -3,22 +3,7 @@
  * 使用授权码流程 (Authorization Code Flow)
  */
 
-const CLIENT_ID = getClientId();
-const CLIENT_SECRET = getClientSecret();
-
-// 从环境变量或 Cloudflare secrets 获取配置
-function getClientId() {
-    // wrangler secret 已设置，通过 env 访问
-    if (typeof CLIENT_ID !== 'undefined') return CLIENT_ID;
-    return '';
-}
-
-function getClientSecret() {
-    if (typeof CLIENT_SECRET !== 'undefined') return CLIENT_SECRET;
-    return '';
-}
-
-// Google OAuth 端点
+// Google OAuth 端点（常量）
 const GOOGLE_OAUTH = {
     auth: 'https://accounts.google.com/o/oauth2/v2/auth',
     token: 'https://oauth2.googleapis.com/token',
@@ -36,15 +21,19 @@ export function generateState() {
 
 /**
  * 构建 Google OAuth URL
+ * @param {string} redirectUri - 回调地址
+ * @param {string} state - CSRF state token
+ * @param {object} env - Worker environment (包含 secrets)
  */
-export function buildAuthUrl(redirectUri, state) {
+export function buildAuthUrl(redirectUri, state, env) {
+    const clientId = env.CLIENT_ID || '';
     const params = new URLSearchParams({
-        client_id: CLIENT_ID,
+        client_id: clientId,
         redirect_uri: redirectUri,
         response_type: 'code',
         scope: 'openid email profile',
-        access_type: 'offline',  // 获取 refresh token
-        prompt: 'consent',       // 首次请求授权
+        access_type: 'offline',
+        prompt: 'consent',
         state: state
     });
     return `${GOOGLE_OAUTH.auth}?${params.toString()}`;
@@ -52,16 +41,19 @@ export function buildAuthUrl(redirectUri, state) {
 
 /**
  * 用授权码交换 token
+ * @param {string} code - 授权码
+ * @param {string} redirectUri - 回调地址（必须与 Google Console 一致）
+ * @param {object} env - Worker environment (包含 secrets)
  */
-export async function exchangeCodeForToken(code, redirectUri) {
+export async function exchangeCodeForToken(code, redirectUri, env) {
     const response = await fetch(GOOGLE_OAUTH.token, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: new URLSearchParams({
-            client_id: CLIENT_ID,
-            client_secret: CLIENT_SECRET,
+            client_id: env.CLIENT_ID || '',
+            client_secret: env.CLIENT_SECRET || '',
             code: code,
             grant_type: 'authorization_code',
             redirect_uri: redirectUri

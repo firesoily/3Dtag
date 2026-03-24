@@ -19,7 +19,7 @@ export async function handleGoogleAuth(request, env, ctx) {
     // 简化版：将 state 嵌入重定向 URL 参数，实际生产建议用 KV 或 signed cookie
     const redirectUri = `${url.protocol}//${url.host}/auth/google/callback`;
 
-    const authUrl = buildAuthUrl(redirectUri, state);
+    const authUrl = buildAuthUrl(redirectUri, state, env);
 
     // 将 state 通过 cookie 传递（临时方案）
     const response = Response.redirect(authUrl, 302);
@@ -61,7 +61,7 @@ export async function handleGoogleCallback(request, env, ctx) {
     try {
         // 交换 token
         const redirectUri = `${url.protocol}//${url.host}/auth/google/callback`;
-        const tokenData = await exchangeCodeForToken(code, redirectUri);
+        const tokenData = await exchangeCodeForToken(code, redirectUri, env);
 
         const { access_token, id_token, refresh_token, expires_in } = tokenData;
 
@@ -141,7 +141,7 @@ function generateSessionId() {
 /**
  * 解析 Cookie 字符串
  */
-function parseCookies(cookieString) {
+export function parseCookies(cookieString) {
     const cookies = {};
     if (!cookieString) return cookies;
     cookieString.split(';').forEach(cookie => {
