@@ -45,6 +45,11 @@ class App {
 
     async init() {
         try {
+            // 初始化认证 UI（渲染登录按钮/用户头像）
+            if (window.AuthUI && typeof window.AuthUI.init === 'function') {
+                await window.AuthUI.init();
+            }
+
             console.log('App init: checking Three.js library...');
             if (typeof THREE === 'undefined') {
                 throw new Error('Three.js library not loaded (THREE is undefined)');
