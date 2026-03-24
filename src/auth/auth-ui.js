@@ -18,20 +18,29 @@ async function init() {
 
 async function setup() {
     const userContainer = document.querySelector('.header-links');
-    if (!userContainer) return;
+    if (!userContainer) {
+        console.error('AuthUI: .header-links container not found');
+        return;
+    }
 
-    // 检查登录状态
-    const result = await window.AuthClient.getCurrentUser();
-    const isAuthenticated = result.authenticated;
-    const userInfo = result.user;
+    try {
+        // 检查登录状态
+        const result = await window.AuthClient?.getCurrentUser?.();
+        const isAuthenticated = result?.authenticated === true;
+        const userInfo = result?.user;
 
-    if (isAuthenticated) {
-        renderUserAvatar(userContainer, userInfo);
-        // 登录后，异步迁移本地历史到云端（如果云端没有）
-        await migrateHistoryToCloud();
-        // 通知应用加载云端数据（通过自定义事件）
-        window.dispatchEvent(new CustomEvent('auth-login', { detail: { user: userInfo } }));
-    } else {
+        if (isAuthenticated && userInfo) {
+            renderUserAvatar(userContainer, userInfo);
+            // 登录后，异步迁移本地历史到云端（如果云端没有）
+            await migrateHistoryToCloud();
+            // 通知应用加载云端数据（通过自定义事件）
+            window.dispatchEvent(new CustomEvent('auth-login', { detail: { user: userInfo } }));
+        } else {
+            renderLoginButton(userContainer);
+        }
+    } catch (err) {
+        console.error('AuthUI setup error:', err);
+        // 出错时也显示登录按钮，确保用户能登录
         renderLoginButton(userContainer);
     }
 
@@ -43,39 +52,46 @@ async function setup() {
 
 function renderLoginButton(container) {
     container.innerHTML = `
-        <button id="google-login-btn" class="btn btn-primary">
+        <button id="google-login-btn" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
             <i class="fab fa-google"></i> 登录
         </button>
-        <a href="https://github.com/firesoily/3Dtag" target="_blank" title="GitHub">
-            <i class="fab fa-github"></i>
+        <a href="https://github.com/firesoily/3Dtag" target="_blank" title="GitHub" style="display: inline-flex; align-items: center; margin-left: 12px; color: white; opacity: 0.9;">
+            <i class="fab fa-github" style="font-size: 1.5rem;"></i>
         </a>
     `;
 
-    document.getElementById('google-login-btn').addEventListener('click', () => {
-        window.AuthClient.startOAuth();
-    });
+    const btn = document.getElementById('google-login-btn');
+    if (btn) {
+        btn.addEventListener('click', () => {
+            window.AuthClient?.startOAuth?.();
+        });
+    }
 }
 
 function renderUserAvatar(container, user) {
     container.innerHTML = `
-        <div class="user-menu">
+        <div class="user-menu" style="display: flex; align-items: center; gap: 12px;">
             <img src="${user.picture || 'https://via.placeholder.com/32'}"
                  alt="${user.name}"
                  class="user-avatar"
-                 title="${user.email}">
-            <button id="logout-btn" class="btn btn-small">
+                 title="${user.email}"
+                 style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+            <button id="logout-btn" class="btn btn-small" style="display: inline-flex; align-items: center; gap: 4px;">
                 <i class="fas fa-sign-out-alt"></i> 退出
             </button>
-            <a href="https://github.com/firesoily/3Dtag" target="_blank" title="GitHub">
-                <i class="fab fa-github"></i>
+            <a href="https://github.com/firesoily/3Dtag" target="_blank" title="GitHub" style="display: inline-flex; align-items: center; color: white; opacity: 0.9;">
+                <i class="fab fa-github" style="font-size: 1.5rem;"></i>
             </a>
         </div>
     `;
 
-    document.getElementById('logout-btn').addEventListener('click', async () => {
-        await window.AuthClient.logout();
-        window.location.reload();
-    });
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            await window.AuthClient?.logout?.();
+            window.location.reload();
+        });
+    }
 }
 
 /**
