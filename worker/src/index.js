@@ -11,11 +11,10 @@ import { handleApi } from './routes/api.js';
  */
 export default {
     async fetch(request, env, ctx) {
-        const url = new URL(request.url);
-
-        console.log(`${request.method} ${url.pathname}`);
-
         try {
+            const url = new URL(request.url);
+            console.log(`${request.method} ${url.pathname}`);
+
             // 认证路由
             if (url.pathname === '/auth/google') {
                 return await handleGoogleAuth(request, env, ctx);
@@ -41,7 +40,7 @@ export default {
             return new Response('Not Found', { status: 404 });
 
         } catch (err) {
-            console.error('Worker error:', err);
+            console.error('Worker top-level error:', err);
             return new Response(`Internal Server Error: ${err.message}`, { status: 500 });
         }
     }
