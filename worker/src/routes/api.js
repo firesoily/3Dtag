@@ -7,23 +7,52 @@
 
 import { parseCookies } from './auth.js';
 
+// 预检请求处理
+function corsPreflight(request) {
+    if (request.method === 'OPTIONS') {
+        return new Response(null, {
+            status: 204,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Max-Age': '86400'
+            }
+        });
+    }
+    return null;
+}
+
 /**
  * API 路由分发器
  */
 export async function handleApi(request, env, ctx) {
+    // 处理 CORS 预检
+    const preflight = corsPreflight(request);
+    if (preflight) return preflight;
+
     const url = new URL(request.url);
     const path = url.pathname.replace(/^\/api\//, '');
 
+    let response;
     switch (path) {
         case 'user':
-            return handleGetUser(request, env);
+            response = await handleGetUser(request, env);
+            break;
         case 'logout':
-            return handleLogout(request, env);
+            response = await handleLogout(request, env);
+            break;
         case 'user-data':
-            return handleUserData(request, env);
+            response = await handleUserData(request, env);
+            break;
         default:
-            return new Response('Not Found', { status: 404 });
+            response = new Response('Not Found', { status: 404 });
     }
+
+    // 添加 CORS 头部到所有响应
+    response.headers.append('Access-Control-Allow-Origin', '*');
+    response.headers.append('Access-Control-Allow-Credentials', 'true');
+    return response;
 }
 
 /**
