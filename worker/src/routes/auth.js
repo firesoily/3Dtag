@@ -5,18 +5,59 @@
 import { buildAuthUrl, exchangeCodeForToken, fetchUserInfo, generateState } from '../oauth.js';
 
 /**
- * 解析 Cookie 字符串
+ * 存储 state 到 KV（如果可用）或回退到 cookie
  */
-export function parseCookies(cookieString) {
-    const cookies = {};
-    if (!cookieString) return cookies;
-    cookieString.split(';').forEach(cookie => {
-        const [key, value] = cookie.split('=').map(s => s.trim());
-        if (key && value) {
-            cookies[key] = decodeURIComponent(value);
+async function storeState(env, state) {
+    const clearStateCookie = 'oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0';
+    
+    // 尝试存储到 KV（优先）
+    if (env.STATE_KV) {
+        try {
+            await env.STATE_KV.put(state, '1', { expirationTtl: 600 }); // 10 分钟 TTL
+            console.log('State stored in KV:', state);
+            // KV 存储成功，不需要 cookie，但为了兼容性仍设置（但不依赖）
+            return { cookie: clearStateCookie, useKv: true };
+        } catch (err) {
+            console.warn('KV store failed, falling back to cookie:', err);
         }
-    });
-    return cookies;
+    }
+    
+    // 降级：使用 cookie 存储
+    console.log('State stored in cookie (KV not available or failed)');
+    return { cookie: `oauth_state=${state}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600`, useKv: false };
+}
+
+/**
+ * 验证 state：先查 KV，不存在则验证 cookie
+ */
+async function verifyState(env, expectedState, cookieHeader) {
+    // 1. 尝试从 KV 验证（最安全）
+    if (env.STATE_KV) {
+        try {
+            const stored = await env.STATE_KV.get(expectedState);
+            if (stored !== null) {
+                // 验证通过，立即删除（一次性）
+                await env.STATE_KV.delete(expectedState);
+                console.log('State verified from KV and deleted:', expectedState);
+                return { valid: true, clearCookie: '' };
+            }
+        } catch (err) {
+            console.warn('KV get failed, falling back to cookie:', err);
+        }
+    }
+    
+    // 2. 降级：验证 cookie
+    const cookies = parseCookies(cookieHeader);
+    const savedState = cookies.oauth_state;
+    const clearStateCookie = 'oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0';
+    
+    if (savedState && savedState === expectedState) {
+        console.log('State verified from cookie:', expectedState);
+        return { valid: true, clearCookie: clearStateCookie };
+    }
+    
+    console.log('State verification failed:', { expected: expectedState, saved: savedState });
+    return { valid: false, clearCookie: clearStateCookie };
 }
 
 /**
@@ -90,10 +131,17 @@ export async function handleGoogleAuth(request, env, ctx) {
         const state = generateState();
         const redirectUri = 'https://auth.3dtag.shop/auth/google/callback';
         const authUrl = buildAuthUrl(redirectUri, state, env);
-        const headers = new Headers({
-            'Location': authUrl,
-            'Set-Cookie': `oauth_state=${state}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600`
-        });
+        
+        // 存储 state（优先 KV，失败则降级到 cookie）
+        const { cookie: stateCookie } = await storeState(env, state);
+        
+        const headers = new Headers();
+        headers.append('Location', authUrl);
+        if (stateCookie) {
+            headers.append('Set-Cookie', stateCookie);
+        }
+        
+        console.log('OAuth start: state stored, redirecting to Google');
         return new Response(null, { status: 302, headers });
     } catch (err) {
         console.error('handleGoogleAuth error:', err);
