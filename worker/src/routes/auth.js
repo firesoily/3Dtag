@@ -1,16 +1,60 @@
 /**
- * 认证路由处理（仅 DB 操作被简化）
+ * 认证路由处理（完整流程，含 DB 操作的详细日志）
  */
 
 import { buildAuthUrl, exchangeCodeForToken, fetchUserInfo, generateState } from '../oauth.js';
 
 /**
- * 极简 upsertUser（模拟成功）
+ * 用户数据 upsert（存在则更新，不存在则插入） - 增强日志
  */
 async function upsertUser(db, userInfo) {
-    console.log('upsertUser called with:', userInfo);
-    // 直接返回对象，不操作 DB
-    return { id: userInfo.sub, email: userInfo.email, name: userInfo.name, picture: userInfo.picture };
+    console.log('upsertUser START');
+    console.log('userInfo:', JSON.stringify(userInfo, null, 2));
+    console.log('userInfo.sub:', userInfo?.sub);
+
+    if (!userInfo || !userInfo.sub) {
+        throw new Error(`Invalid userInfo: missing sub field. userInfo=${JSON.stringify(userInfo)}`);
+    }
+
+    const now = new Date().toISOString();
+
+    try {
+        // 尝试查询
+        console.log('Querying existing user...');
+        const existing = await db.prepare(
+            'SELECT * FROM users WHERE id = ?'
+        ).bind(userInfo.sub).first();
+
+        console.log('Existing user:', existing ? 'found' : 'not found');
+
+        if (existing) {
+            // 更新信息
+            console.log('Updating user...');
+            await db.prepare(
+                `UPDATE users SET email = ?, name = ?, picture = ? WHERE id = ?`
+            ).bind(userInfo.email, userInfo.name, userInfo.picture, userInfo.sub).run();
+            console.log('User updated');
+            return existing;
+        } else {
+            // 插入新用户
+            console.log('Inserting new user...');
+            await db.prepare(
+                `INSERT INTO users (id, email, name, picture, created_at)
+                 VALUES (?, ?, ?, ?, ?)`
+            ).bind(userInfo.sub, userInfo.email, userInfo.name, userInfo.picture, now).run();
+            console.log('User inserted');
+            return {
+                id: userInfo.sub,
+                email: userInfo.email,
+                name: userInfo.name,
+                picture: userInfo.picture,
+                created_at: now
+            };
+        }
+    } catch (err) {
+        console.error('upsertUser DB error:', err);
+        throw err; // 重新抛出以便外层捕获
+    }
 }
 
 /**
@@ -35,7 +79,7 @@ export async function handleGoogleAuth(request, env, ctx) {
 }
 
 /**
- * 处理 OAuth 回调（包含 upsertUser 调用）
+ * 处理 OAuth 回调
  */
 export async function handleGoogleCallback(request, env, ctx) {
     try {
@@ -66,30 +110,43 @@ export async function handleGoogleCallback(request, env, ctx) {
 
         console.log('Fetching user info...');
         const userInfo = await fetchUserInfo(access_token);
-        console.log('User info received:', userInfo?.email);
+        console.log('User info received:');
+        console.log('  full object:', JSON.stringify(userInfo, null, 2));
+        console.log('  sub:', userInfo?.sub);
+        console.log('  email:', userInfo?.email);
 
-        console.log('Upserting user (simulated)...');
+        console.log('Upserting user to DB...');
         const user = await upsertUser(env.DB, userInfo);
         console.log('User upserted:', user?.id);
 
         // 创建 session
+        console.log('Creating session...');
         const sessionId = generateSessionId();
         const expiresAt = new Date(Date.now() + expires_in * 1000).toISOString();
 
-        // 暂时注释掉 DB insert
-        // await env.DB.prepare(`INSERT INTO sessions ...`).bind(...).run();
+        console.log('Inserting session into DB...');
+        console.log('Session params:', { sessionId, userId: user.id, expiresAt });
 
-        console.log('Session created (simulated):', sessionId);
+        await env.DB.prepare(
+            `INSERT OR REPLACE INTO sessions (session_id, user_id, expires_at)
+             VALUES (?, ?, ?)`
+        ).bind(sessionId, user.id, expiresAt).run();
+
+        console.log('Session inserted');
+
+        // 设置会话 cookie
         const sessionCookie = `session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${expires_in}`;
         const redirectUrl = `/?logged_in=true`;
         const headers = new Headers({
             'Location': redirectUrl,
             'Set-Cookie': [sessionCookie, clearStateCookie].join('\n')
         });
+        console.log('Redirecting to:', redirectUrl);
         return new Response(null, { status: 302, headers });
 
     } catch (err) {
         console.error('OAuth callback error:', err);
+        console.error('Error stack:', err.stack);
         return new Response(`认证失败: ${err.message}`, { status: 500 })
             .headers.append('Set-Cookie', 'oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
     }
