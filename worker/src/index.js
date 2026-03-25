@@ -1,4 +1,4 @@
-import { handleGoogleAuth } from './routes/auth-simple.js';
+import { handleGoogleAuth, handleGoogleCallback } from './routes/auth.js';
 import { handleApi } from './routes/api.js';
 
 export default {
@@ -12,7 +12,7 @@ export default {
             }
 
             if (url.pathname === '/auth/google/callback') {
-                return new Response('callback stub', { status: 200 });
+                return await handleGoogleCallback(request, env, ctx);
             }
 
             if (url.pathname.startsWith('/api/')) {
