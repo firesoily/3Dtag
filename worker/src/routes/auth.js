@@ -62,17 +62,88 @@ export async function handleGoogleCallback(request, env, ctx) {
     console.log('CLIENT_ID present:', !!env?.CLIENT_ID);
     console.log('CLIENT_SECRET present:', !!env?.CLIENT_SECRET);
 
-    const url = new URL(request.url);
-    const code = url.searchParams.get('code');
-    const state = url.searchParams.get('state');
-    const error = url.searchParams.get('error');
+    try {
+        const url = new URL(request.url);
+        console.log('Request URL:', url.href);
 
-    console.log('OAuth callback received:', { code: code ? '***' : 'missing', state: state ? 'present' : 'missing', error });
+        const code = url.searchParams.get('code');
+        const state = url.searchParams.get('state');
+        const error = url.searchParams.get('error');
 
-    // TEST: 强制异常
-    throw new Error('TEST: handleGoogleCallback called, about to validate code');
+        console.log('OAuth callback received:', { code: code ? '***' : 'missing', state: state ? 'present' : 'missing', error });
 
-    // 检查 OAuth 错误
+        // 检查 OAuth 错误
+        if (error) {
+            return new Response(`授权失败: ${error}`, { status: 400 });
+        }
+
+        if (!code) {
+            return new Response('缺少授权码', { status: 400 });
+        }
+
+        // 验证 state（从 cookie 读取）
+        const cookieHeader = request.headers.get('Cookie') || '';
+        const cookies = parseCookies(cookieHeader);
+        const savedState = cookies.oauth_state;
+
+        console.log('State validation:', { savedState: savedState ? 'present' : 'missing', state: state ? 'present' : 'missing', match: savedState === state });
+
+        // 清除 state cookie
+        const clearStateCookie = 'oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0';
+
+        if (!savedState || savedState !== state) {
+            return new Response('state 验证失败', { status: 400 })
+                .headers.append('Set-Cookie', clearStateCookie);
+        }
+
+        console.log('OAuth callback: exchanging token...');
+        // 交换 token
+        const redirectUri = 'https://auth.3dtag.shop/auth/google/callback';
+        const tokenData = await exchangeCodeForToken(code, redirectUri, env);
+
+        const { access_token, id_token, refresh_token, expires_in } = tokenData;
+        console.log('Token exchange success, expires_in:', expires_in);
+
+        // 获取用户信息
+        console.log('Fetching user info...');
+        const userInfo = await fetchUserInfo(access_token);
+        console.log('User info:', userInfo?.sub, userInfo?.email);
+
+        // 查询或创建用户
+        console.log('Upserting user to DB...');
+        const user = await upsertUser(env.DB, userInfo);
+        console.log('User upserted:', user?.id);
+
+        // 创建会话（session）
+        const sessionId = generateSessionId();
+        const expiresAt = new Date(Date.now() + expires_in * 1000).toISOString();
+
+        await env.DB.prepare(
+            `INSERT OR REPLACE INTO sessions (session_id, user_id, expires_at)
+             VALUES (?, ?, ?)`
+        ).bind(sessionId, user.id, expiresAt).run();
+
+        console.log('Session created:', sessionId);
+
+        // 设置会话 cookie（HTTP-only）
+        const sessionCookie = `session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${expires_in}`;
+
+        // 重定向回前端首页（带上登录成功标识）
+        // 同样不能直接修改 Response.redirect() 的 headers
+        const redirectUrl = `/?logged_in=true`;
+        const headers = new Headers({
+            'Location': redirectUrl,
+            'Set-Cookie': [sessionCookie, clearStateCookie].join('\n')
+        });
+        console.log('Redirecting to:', redirectUrl);
+        return new Response(null, { status: 302, headers });
+
+    } catch (err) {
+        console.error('OAuth callback error:', err);
+        return new Response(`认证失败: ${err.message}`, { status: 500 })
+            .headers.append('Set-Cookie', 'oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+    }
+}
     if (error) {
         return new Response(`授权失败: ${error}`, { status: 400 });
     }
