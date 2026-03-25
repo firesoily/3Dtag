@@ -30,63 +30,99 @@ export async function handleApi(request, env, ctx) {
  * GET /api/user - 获取当前用户信息
  */
 async function handleGetUser(request, env) {
-    const sessionId = getSessionId(request);
-    if (!sessionId) {
-        return new Response(JSON.stringify({ authenticated: false }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-        });
-    }
+    try {
+        console.log('handleGetUser START');
+        const sessionId = getSessionId(request);
+        console.log('Session ID from cookie:', sessionId);
 
-    // 查询 sessions 表
-    const session = await env.DB.prepare(
-        `SELECT s.*, u.email, u.name, u.picture
-         FROM sessions s
-         JOIN users u ON s.user_id = u.id
-         WHERE s.session_id = ? AND s.expires_at > ?`
-    ).bind(sessionId, new Date().toISOString()).first();
-
-    if (!session) {
-        return new Response(JSON.stringify({ authenticated: false }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-        });
-    }
-
-    const userData = {
-        authenticated: true,
-        user: {
-            id: session.user_id,
-            email: session.email,
-            name: session.name,
-            picture: session.picture
+        if (!sessionId) {
+            console.log('No session ID, returning unauthenticated');
+            return new Response(JSON.stringify({ authenticated: false }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+            });
         }
-    };
 
-    return new Response(JSON.stringify(userData), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-    });
+        console.log('Querying DB for session...');
+        // 查询 sessions 表
+        const session = await env.DB.prepare(
+            `SELECT s.*, u.email, u.name, u.picture
+             FROM sessions s
+             JOIN users u ON s.user_id = u.id
+             WHERE s.session_id = ? AND s.expires_at > ?`
+        ).bind(sessionId, new Date().toISOString()).first();
+
+        console.log('Session query result:', session ? 'found' : 'not found');
+
+        if (!session) {
+            return new Response(JSON.stringify({ authenticated: false }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        const userData = {
+            authenticated: true,
+            user: {
+                id: session.user_id,
+                email: session.email,
+                name: session.name,
+                picture: session.picture
+            }
+        };
+
+        console.log('Returning user data:', userData);
+        return new Response(JSON.stringify(userData), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+    } catch (err) {
+        console.error('handleGetUser error:', err);
+        console.error('Error stack:', err.stack);
+        return new Response(JSON.stringify({
+            authenticated: false,
+            error: 'Internal server error',
+            message: err.message
+        }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
 }
 
 /**
  * POST /api/logout - 登出
  */
 async function handleLogout(request, env) {
-    const sessionId = getSessionId(request);
-    if (sessionId) {
-        await env.DB.prepare('DELETE FROM sessions WHERE session_id = ?')
-            .bind(sessionId).run();
+    try {
+        console.log('handleLogout START');
+        const sessionId = getSessionId(request);
+        console.log('Session ID to delete:', sessionId);
+
+        if (sessionId) {
+            console.log('Deleting session from DB...');
+            await env.DB.prepare('DELETE FROM sessions WHERE session_id = ?')
+                .bind(sessionId).run();
+            console.log('Session deleted');
+        }
+
+        const response = new Response(JSON.stringify({ success: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        // 清除 session cookie
+        response.headers.append('Set-Cookie', 'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+        return response;
+
+    } catch (err) {
+        console.error('handleLogout error:', err);
+        return new Response(JSON.stringify({ success: false, error: err.message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
-
-    const response = new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-    });
-
-    // 清除 session cookie
-    response.headers.append('Set-Cookie', 'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
-    return response;
 }
 
 /**
