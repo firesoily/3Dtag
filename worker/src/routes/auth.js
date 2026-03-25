@@ -10,12 +10,12 @@ import { buildAuthUrl, exchangeCodeForToken, fetchUserInfo, generateState } from
  * 生成 OAuth 入口路由
  */
 export async function handleGoogleAuth(request, env, ctx) {
-    console.log('=== handleGoogleAuth START ===');
-    console.log('env keys:', env ? Object.keys(env).join(', ') : 'env is falsy');
-    console.log('CLIENT_ID present:', !!env?.CLIENT_ID);
-    console.log('CLIENT_SECRET present:', !!env?.CLIENT_SECRET);
-
     try {
+        console.log('=== handleGoogleAuth START ===');
+        console.log('env keys:', env ? Object.keys(env).join(', ') : 'env is falsy');
+        console.log('CLIENT_ID present:', !!env?.CLIENT_ID);
+        console.log('CLIENT_SECRET present:', !!env?.CLIENT_SECRET);
+
         const url = new URL(request.url);
         console.log('Request URL:', url.href);
 
@@ -23,7 +23,6 @@ export async function handleGoogleAuth(request, env, ctx) {
         const state = generateState();
         console.log('Generated state length:', state.length);
 
-        // 临时存储 state（使用 KV namespace，需要先绑定）
         // 简化版：将 state 嵌入重定向 URL 参数，实际生产建议用 KV 或 signed cookie
         const redirectUri = 'https://auth.3dtag.shop/auth/google/callback';
         console.log('Redirect URI:', redirectUri);
@@ -57,12 +56,12 @@ export async function handleGoogleAuth(request, env, ctx) {
  * 处理 OAuth 回调
  */
 export async function handleGoogleCallback(request, env, ctx) {
-    console.log('=== handleGoogleCallback START ===');
-    console.log('env keys:', env ? Object.keys(env).join(', ') : 'env is falsy');
-    console.log('CLIENT_ID present:', !!env?.CLIENT_ID);
-    console.log('CLIENT_SECRET present:', !!env?.CLIENT_SECRET);
-
     try {
+        console.log('=== handleGoogleCallback START ===');
+        console.log('env keys:', env ? Object.keys(env).join(', ') : 'env is falsy');
+        console.log('CLIENT_ID present:', !!env?.CLIENT_ID);
+        console.log('CLIENT_SECRET present:', !!env?.CLIENT_SECRET);
+
         const url = new URL(request.url);
         console.log('Request URL:', url.href);
 
@@ -129,7 +128,6 @@ export async function handleGoogleCallback(request, env, ctx) {
         const sessionCookie = `session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${expires_in}`;
 
         // 重定向回前端首页（带上登录成功标识）
-        // 同样不能直接修改 Response.redirect() 的 headers
         const redirectUrl = `/?logged_in=true`;
         const headers = new Headers({
             'Location': redirectUrl,
