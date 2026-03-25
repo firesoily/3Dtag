@@ -71,6 +71,11 @@ export async function handleGoogleCallback(request, env, ctx) {
         const tokenData = await exchangeCodeForToken(code, redirectUri, env);
         const { access_token, expires_in } = tokenData;
         console.log('Token exchange success, expires_in:', expires_in);
+        console.log('expires_in type:', typeof expires_in, 'value:', expires_in);
+
+        // 确保 expires_in 是正整数
+        const maxAge = Math.max(0, Math.floor(expires_in || 3600));
+        console.log('Using maxAge:', maxAge);
 
         console.log('Fetching user info...');
         const userInfo = await fetchUserInfo(access_token);
@@ -78,12 +83,15 @@ export async function handleGoogleCallback(request, env, ctx) {
 
         console.log('SKIPPING DB operations - test mode');
         const sessionId = Math.random().toString(36).substring(2);
-        const sessionCookie = `session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${expires_in}`;
+        const sessionCookie = `session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
         const redirectUrl = `/?logged_in=true`;
-        const headers = new Headers({
-            'Location': redirectUrl,
-            'Set-Cookie': [sessionCookie, clearStateCookie].join('\n')
-        });
+
+        console.log('Creating response with headers...');
+        const headers = new Headers();
+        headers.append('Location', redirectUrl);
+        headers.append('Set-Cookie', sessionCookie);
+        headers.append('Set-Cookie', clearStateCookie);
+
         console.log('Redirecting to:', redirectUrl);
         return new Response(null, { status: 302, headers });
 
