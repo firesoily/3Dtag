@@ -18,16 +18,16 @@ export default {
         try {
             // 认证路由
             if (url.pathname === '/auth/google') {
-                return handleGoogleAuth(request, env, ctx);
+                return await handleGoogleAuth(request, env, ctx);
             }
 
             if (url.pathname === '/auth/google/callback') {
-                return handleGoogleCallback(request, env, ctx);
+                return await handleGoogleCallback(request, env, ctx);
             }
 
             // API 路由
             if (url.pathname.startsWith('/api/')) {
-                return handleApi(request, env, ctx);
+                return await handleApi(request, env, ctx);
             }
 
             // 健康检查
