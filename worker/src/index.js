@@ -12,8 +12,6 @@ import { handleApi } from './routes/api.js';
 export default {
     async fetch(request, env, ctx) {
         try {
-            // TEST: 强制抛出异常以验证错误处理
-            // throw new Error('TEST ERROR: 如果看到这个，说明 try-catch 工作正常');
             const url = new URL(request.url);
             console.log(`${request.method} ${url.pathname}`);
 
