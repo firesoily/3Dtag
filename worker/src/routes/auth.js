@@ -61,8 +61,9 @@ export async function handleGoogleCallback(request, env, ctx) {
         const clearStateCookie = 'oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0';
 
         if (!savedState || savedState !== state) {
-            return new Response('state 验证失败', { status: 400 })
-                .headers.append('Set-Cookie', clearStateCookie);
+            const response = new Response('state 验证失败', { status: 400 });
+            response.headers.append('Set-Cookie', clearStateCookie);
+            return response;
         }
 
         console.log('OAuth callback: exchanging token...');
@@ -89,7 +90,8 @@ export async function handleGoogleCallback(request, env, ctx) {
     } catch (err) {
         console.error('OAuth callback error:', err);
         console.error('Error stack:', err.stack);
-        return new Response(`认证失败: ${err.message}`, { status: 500 })
-            .headers.append('Set-Cookie', 'oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+        const response = new Response(`认证失败: ${err.message}`, { status: 500 });
+        response.headers.append('Set-Cookie', 'oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+        return response;
     }
 }
