@@ -84,7 +84,8 @@ export async function handleGoogleCallback(request, env, ctx) {
         console.log('SKIPPING DB operations - test mode');
         const sessionId = Math.random().toString(36).substring(2);
         const sessionCookie = `session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
-        const redirectUrl = `/?logged_in=true`;
+        // 重定向到主站（3dtag.shop），带上登录标识
+        const redirectUrl = `https://3dtag.shop/?logged_in=true`;
 
         console.log('Creating response with headers...');
         const headers = new Headers();
