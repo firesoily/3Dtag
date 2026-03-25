@@ -1,5 +1,5 @@
 /**
- * 认证路由处理（完整 OAuth，无 DB 操作）
+ * 认证路由处理（完整版，含真实 DB 操作）
  */
 
 import { buildAuthUrl, exchangeCodeForToken, fetchUserInfo, generateState } from '../oauth.js';
@@ -17,6 +17,67 @@ export function parseCookies(cookieString) {
         }
     });
     return cookies;
+}
+
+/**
+ * 生成安全随机会话 ID
+ */
+function generateSessionId() {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * 用户数据 upsert（存在则更新，不存在则插入）
+ */
+async function upsertUser(db, userInfo) {
+    console.log('upsertUser START');
+    console.log('userInfo:', JSON.stringify(userInfo, null, 2));
+
+    if (!userInfo || !userInfo.sub) {
+        throw new Error(`Invalid userInfo: missing sub field. userInfo=${JSON.stringify(userInfo)}`);
+    }
+
+    const now = new Date().toISOString();
+
+    try {
+        // 尝试查询现有用户
+        console.log('Querying existing user...');
+        const existing = await db.prepare(
+            'SELECT * FROM users WHERE id = ?'
+        ).bind(userInfo.sub).first();
+
+        console.log('Existing user:', existing ? 'found' : 'not found');
+
+        if (existing) {
+            // 更新信息
+            console.log('Updating user...');
+            await db.prepare(
+                `UPDATE users SET email = ?, name = ?, picture = ? WHERE id = ?`
+            ).bind(userInfo.email, userInfo.name, userInfo.picture, userInfo.sub).run();
+            console.log('User updated');
+            return existing;
+        } else {
+            // 插入新用户
+            console.log('Inserting new user...');
+            await db.prepare(
+                `INSERT INTO users (id, email, name, picture, created_at)
+                 VALUES (?, ?, ?, ?, ?)`
+            ).bind(userInfo.sub, userInfo.email, userInfo.name, userInfo.picture, now).run();
+            console.log('User inserted');
+            return {
+                id: userInfo.sub,
+                email: userInfo.email,
+                name: userInfo.name,
+                picture: userInfo.picture,
+                created_at: now
+            };
+        }
+    } catch (err) {
+        console.error('upsertUser DB error:', err);
+        throw err;
+    }
 }
 
 /**
@@ -41,7 +102,7 @@ export async function handleGoogleAuth(request, env, ctx) {
 }
 
 /**
- * 处理 OAuth 回调（含 token exchange + user info，无 DB）
+ * 处理 OAuth 回调（含真实 DB 操作）
  */
 export async function handleGoogleCallback(request, env, ctx) {
     try {
@@ -71,30 +132,44 @@ export async function handleGoogleCallback(request, env, ctx) {
         const tokenData = await exchangeCodeForToken(code, redirectUri, env);
         const { access_token, expires_in } = tokenData;
         console.log('Token exchange success, expires_in:', expires_in);
-        console.log('expires_in type:', typeof expires_in, 'value:', expires_in);
 
-        // 确保 expires_in 是正整数
+        // 确保 expires_in 为正整数
         const maxAge = Math.max(0, Math.floor(expires_in || 3600));
-        console.log('Using maxAge:', maxAge);
 
         console.log('Fetching user info...');
         const userInfo = await fetchUserInfo(access_token);
         console.log('User info received:', { email: userInfo?.email, sub: userInfo?.sub });
 
-        console.log('SKIPPING DB operations - test mode');
-        const sessionId = Math.random().toString(36).substring(2);
+        console.log('Upserting user to DB...');
+        const user = await upsertUser(env.DB, userInfo);
+        console.log('User upserted:', user?.id);
+
+        // 创建 session 并插入数据库
+        console.log('Creating session...');
+        const sessionId = generateSessionId();
+        const expiresAt = new Date(Date.now() + maxAge * 1000).toISOString();
+
+        console.log('Inserting session into DB...');
+        console.log('Session params:', { sessionId, userId: user.id, expiresAt });
+
+        await env.DB.prepare(
+            `INSERT OR REPLACE INTO sessions (session_id, user_id, expires_at)
+             VALUES (?, ?, ?)`
+        ).bind(sessionId, user.id, expiresAt).run();
+
+        console.log('Session inserted');
+
+        // 设置会话 cookie 并重定向到主站
         const sessionCookie = `session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
-        // 重定向到主站（3dtag.shop），带上登录标识
         const redirectUrl = `https://3dtag.shop/?logged_in=true`;
 
-        console.log('Creating response with headers...');
-        const headers = new Headers();
-        headers.append('Location', redirectUrl);
-        headers.append('Set-Cookie', sessionCookie);
-        headers.append('Set-Cookie', clearStateCookie);
+        const response = new Response(null, { status: 302, headers: new Headers() });
+        response.headers.append('Location', redirectUrl);
+        response.headers.append('Set-Cookie', sessionCookie);
+        response.headers.append('Set-Cookie', clearStateCookie);
 
         console.log('Redirecting to:', redirectUrl);
-        return new Response(null, { status: 302, headers });
+        return response;
 
     } catch (err) {
         console.error('OAuth callback error:', err);
