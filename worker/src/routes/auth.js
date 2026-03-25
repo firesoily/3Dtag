@@ -25,17 +25,21 @@ export async function handleGoogleAuth(request, env, ctx) {
 
         // 临时存储 state（使用 KV namespace，需要先绑定）
         // 简化版：将 state 嵌入重定向 URL 参数，实际生产建议用 KV 或 signed cookie
-        const redirectUri = `${url.protocol}//${url.host}/auth/google/callback`;
+        const redirectUri = 'https://auth.3dtag.shop/auth/google/callback';
         console.log('Redirect URI:', redirectUri);
 
         const authUrl = buildAuthUrl(redirectUri, state, env);
         console.log('Auth URL:', authUrl);
 
         // 将 state 通过 cookie 传递（临时方案）
-        const response = Response.redirect(authUrl, 302);
-        response.headers.append('Set-Cookie', `oauth_state=${state}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600`);
+        // 注意：不能直接修改 Response.redirect() 的 headers，需要创建新 Response
+        const headers = new Headers({
+            'Location': authUrl,
+            'Set-Cookie': `oauth_state=${state}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600`
+        });
         console.log('=== handleGoogleAuth SUCCESS ===');
-        return response;
+        return new Response(null, { status: 302, headers });
+
     } catch (err) {
         console.error('=== handleGoogleAuth ERROR ===');
         console.error('Error name:', err.name);
@@ -65,6 +69,9 @@ export async function handleGoogleCallback(request, env, ctx) {
 
     console.log('OAuth callback received:', { code: code ? '***' : 'missing', state: state ? 'present' : 'missing', error });
 
+    // TEST: 强制异常
+    throw new Error('TEST: handleGoogleCallback called, about to validate code');
+
     // 检查 OAuth 错误
     if (error) {
         return new Response(`授权失败: ${error}`, { status: 400 });
@@ -92,7 +99,7 @@ export async function handleGoogleCallback(request, env, ctx) {
     try {
         console.log('OAuth callback: exchanging token...');
         // 交换 token
-        const redirectUri = `${url.protocol}//${url.host}/auth/google/callback`;
+        const redirectUri = 'https://auth.3dtag.shop/auth/google/callback';
         const tokenData = await exchangeCodeForToken(code, redirectUri, env);
 
         const { access_token, id_token, refresh_token, expires_in } = tokenData;
@@ -123,21 +130,19 @@ export async function handleGoogleCallback(request, env, ctx) {
         const sessionCookie = `session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${expires_in}`;
 
         // 重定向回前端首页（带上登录成功标识）
+        // 同样不能直接修改 Response.redirect() 的 headers
         const redirectUrl = `/?logged_in=true`;
-        return Response.redirect(redirectUrl, 302)
-            .headers.append('Set-Cookie', sessionCookie)
-            .headers.append('Set-Cookie', clearStateCookie);
+        const headers = new Headers({
+            'Location': redirectUrl,
+            'Set-Cookie': [sessionCookie, clearStateCookie].join('\n')
+        });
+        console.log('Redirecting to:', redirectUrl);
+        return new Response(null, { status: 302, headers });
 
     } catch (err) {
-        console.error('=== OAuth callback ERROR ===');
-        console.error('Error name:', err.name);
-        console.error('Error message:', err.message);
-        console.error('Error stack:', err.stack);
-        // 返回详细错误（调试用）
-        return new Response(`OAuth callback failed: ${err.name}: ${err.message}\n\nStack:\n${err.stack || 'N/A'}`, {
-            status: 500,
-            headers: { 'Content-Type': 'text/plain' }
-        }).headers.append('Set-Cookie', clearStateCookie);
+        console.error('OAuth callback error:', err);
+        return new Response(`认证失败: ${err.message}`, { status: 500 })
+            .headers.append('Set-Cookie', clearStateCookie);
     }
 }
 
