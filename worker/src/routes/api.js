@@ -10,12 +10,14 @@ import { parseCookies } from './auth.js';
 // 预检请求处理
 function corsPreflight(request) {
     if (request.method === 'OPTIONS') {
+        const origin = request.headers.get('Origin') || '*';
         return new Response(null, {
             status: 204,
             headers: {
-                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Origin': origin,
                 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                'Access-Control-Allow-Credentials': 'true',
                 'Access-Control-Max-Age': '86400'
             }
         });
@@ -50,7 +52,8 @@ export async function handleApi(request, env, ctx) {
     }
 
     // 添加 CORS 头部到所有响应
-    response.headers.append('Access-Control-Allow-Origin', '*');
+    const origin = request.headers.get('Origin') || '*';
+    response.headers.append('Access-Control-Allow-Origin', origin);
     response.headers.append('Access-Control-Allow-Credentials', 'true');
     return response;
 }
