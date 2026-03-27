@@ -21,17 +21,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js (for any build steps if needed)
+      - name: Setup Node.js (optional, only if package.json exists)
+        if: exists('package.json')
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies (if any)
-        run: |
-          # 你的项目是无依赖的静态站点，无需构建
-          # 如果有构建步骤，在这里执行
-          echo "No build required - static HTML/CSS/JS"
+        if: exists('package.json')
+        run: npm ci
+
+      - name: Test build (optional)
+        if: exists('package.json')
+        run: npm run build || echo "No build step defined"
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
