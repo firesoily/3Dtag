@@ -4,7 +4,7 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Elements (with null checks for safety)
+    // Elements (defensive: all may be null)
     const billingToggle = document.getElementById('billing-toggle');
     const monthlyPrices = document.querySelectorAll('.amount.monthly');
     const yearlyPrices = document.querySelectorAll('.amount.yearly');
@@ -16,6 +16,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // State
     let selectedTier = 'pro';
     let selectedPaymentMethod = 'wechat';
+
+    // Prevent modal from opening on page load
+    // Explicitly ensure it's hidden on startup
+    if (paymentModal) {
+        paymentModal.classList.add('hidden');
+    }
 
     // Billing toggle handler
     if (billingToggle) {
@@ -35,15 +41,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Upgrade button clicks - only these trigger modal
+    // Upgrade button clicks - ONLY these trigger modal
     upgradeButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             selectedTier = btn.dataset.tier;
             openPaymentModal();
         });
     });
 
-    // Contact sales buttons
+    // Contact sales buttons - do NOT open modal
     contactSalesButtons.forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -53,6 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Open payment modal
     function openPaymentModal() {
+        if (!paymentModal) return;
+
         const tierNames = {
             'pro': '专业版',
             'team': '团队版'
@@ -94,34 +104,35 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('summary-cycle').textContent = isYearly ? '年付' : '月付';
     }
 
-    // Close modal - centralized function
+    // Close modal - centralized
     function closeModal() {
         if (paymentModal) {
             paymentModal.classList.add('hidden');
         }
     }
 
-    // Close modal handlers (setup after DOM loaded)
+    // Setup close handlers
     if (paymentModal) {
-        // Close button
+        // X button
         const modalCloseBtn = paymentModal.querySelector('.modal-close');
         if (modalCloseBtn) {
             modalCloseBtn.addEventListener('click', (e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 closeModal();
             });
         }
 
-        // Click outside modal content
+        // Click outside modal-content (backdrop)
         paymentModal.addEventListener('click', (e) => {
             if (e.target === paymentModal) {
                 closeModal();
             }
         });
 
-        // ESC key to close
+        // ESC key
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !paymentModal.classList.contains('hidden')) {
+            if (e.key === 'Escape' && paymentModal && !paymentModal.classList.contains('hidden')) {
                 closeModal();
             }
         });
@@ -148,16 +159,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (wechatQR) {
             if (method === 'wechat' || method === 'alipay') {
                 wechatQR.style.display = 'block';
-                if (method === 'alipay') {
-                    const qrIcon = wechatQR.querySelector('.qr-placeholder i');
-                    const qrText = wechatQR.querySelector('.qr-placeholder span');
-                    if (qrIcon) qrIcon.className = 'fas fa-qrcode';
-                    if (qrText) qrText.textContent = '支付宝支付二维码';
-                } else {
-                    const qrIcon = wechatQR.querySelector('.qr-placeholder i');
-                    const qrText = wechatQR.querySelector('.qr-placeholder span');
-                    if (qrIcon) qrIcon.className = 'fas fa-qrcode';
-                    if (qrText) qrText.textContent = '微信支付二维码';
+                const qrIcon = wechatQR.querySelector('.qr-placeholder i');
+                const qrText = wechatQR.querySelector('.qr-placeholder span');
+                if (qrIcon) {
+                    qrIcon.className = 'fas fa-qrcode';
+                    qrText.textContent = method === 'alipay' ? '支付宝支付二维码' : '微信支付二维码';
                 }
             } else if (method === 'card') {
                 wechatQR.style.display = 'none';
@@ -171,7 +177,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Confirm payment button
     const confirmPaymentBtn = document.querySelector('#payment-modal .confirm-payment');
     if (confirmPaymentBtn) {
-        confirmPaymentBtn.addEventListener('click', () => {
+        confirmPaymentBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
             const tierNames = {
                 'pro': '专业版',
                 'team': '团队版'
@@ -259,5 +268,8 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.head.appendChild(style);
 
+    // Debug log
     console.log('Pricing page initialized.');
+    console.log('Upgrade buttons found:', upgradeButtons.length);
+    console.log('Payment modal:', paymentModal ? 'present' : 'missing');
 });
