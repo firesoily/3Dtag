@@ -4,16 +4,13 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Elements
+    // Elements (with null checks for safety)
     const billingToggle = document.getElementById('billing-toggle');
     const monthlyPrices = document.querySelectorAll('.amount.monthly');
     const yearlyPrices = document.querySelectorAll('.amount.yearly');
     const upgradeButtons = document.querySelectorAll('.upgrade-btn');
     const contactSalesButtons = document.querySelectorAll('.contact-sales');
     const paymentModal = document.getElementById('payment-modal');
-    const modalClose = paymentModal.querySelector('.modal-close');
-    const confirmPaymentBtn = paymentModal.querySelector('.confirm-payment');
-    const paymentMethods = document.querySelectorAll('.payment-method');
     const wechatQR = document.getElementById('wechat-qr');
 
     // State
@@ -21,22 +18,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedPaymentMethod = 'wechat';
 
     // Billing toggle handler
-    billingToggle.addEventListener('change', () => {
-        const isYearly = billingToggle.checked;
+    if (billingToggle) {
+        billingToggle.addEventListener('change', () => {
+            const isYearly = billingToggle.checked;
 
-        monthlyPrices.forEach(el => {
-            el.style.display = isYearly ? 'none' : 'inline';
+            monthlyPrices.forEach(el => {
+                el.style.display = isYearly ? 'none' : 'inline';
+            });
+
+            yearlyPrices.forEach(el => {
+                el.style.display = isYearly ? 'inline' : 'none';
+            });
+
+            // Update modal prices if open
+            updateModalPrice();
         });
+    }
 
-        yearlyPrices.forEach(el => {
-            el.style.display = isYearly ? 'inline' : 'none';
-        });
-
-        // Update modal prices if open
-        updateModalPrice();
-    });
-
-    // Upgrade button clicks
+    // Upgrade button clicks - only these trigger modal
     upgradeButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             selectedTier = btn.dataset.tier;
@@ -64,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'team': { monthly: '¥79/月', yearly: '¥63/月' }
         };
 
-        const isYearly = billingToggle.checked;
+        const isYearly = billingToggle ? billingToggle.checked : false;
         const cycle = isYearly ? '年付' : '月付';
         const price = isYearly ? tierPrices[selectedTier].yearly : tierPrices[selectedTier].monthly;
 
@@ -75,38 +74,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Reset payment method
         selectPaymentMethod('wechat');
-        wechatQR.style.display = 'block';
+        if (wechatQR) wechatQR.style.display = 'block';
 
         paymentModal.classList.remove('hidden');
     }
 
     // Update modal price when toggle changes (if modal open)
     function updateModalPrice() {
-        if (paymentModal.classList.contains('hidden')) return;
+        if (!paymentModal || paymentModal.classList.contains('hidden')) return;
 
         const tierPrices = {
             'pro': { monthly: '¥29/月', yearly: '¥23/月' },
             'team': { monthly: '¥79/月', yearly: '¥63/月' }
         };
 
-        const isYearly = billingToggle.checked;
+        const isYearly = billingToggle ? billingToggle.checked : false;
         const price = isYearly ? tierPrices[selectedTier].yearly : tierPrices[selectedTier].monthly;
         document.getElementById('summary-price').textContent = price;
         document.getElementById('summary-cycle').textContent = isYearly ? '年付' : '月付';
     }
 
-    // Close modal
-    modalClose.addEventListener('click', () => {
-        paymentModal.classList.add('hidden');
-    });
-
-    paymentModal.addEventListener('click', (e) => {
-        if (e.target === paymentModal) {
+    // Close modal - centralized function
+    function closeModal() {
+        if (paymentModal) {
             paymentModal.classList.add('hidden');
         }
-    });
+    }
+
+    // Close modal handlers (setup after DOM loaded)
+    if (paymentModal) {
+        // Close button
+        const modalCloseBtn = paymentModal.querySelector('.modal-close');
+        if (modalCloseBtn) {
+            modalCloseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeModal();
+            });
+        }
+
+        // Click outside modal content
+        paymentModal.addEventListener('click', (e) => {
+            if (e.target === paymentModal) {
+                closeModal();
+            }
+        });
+
+        // ESC key to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !paymentModal.classList.contains('hidden')) {
+                closeModal();
+            }
+        });
+    }
 
     // Payment method selection
+    const paymentMethods = document.querySelectorAll('.payment-method');
     paymentMethods.forEach(method => {
         method.addEventListener('click', () => {
             const methodName = method.dataset.method;
@@ -117,58 +139,66 @@ document.addEventListener('DOMContentLoaded', () => {
     function selectPaymentMethod(method) {
         selectedPaymentMethod = method;
         paymentMethods.forEach(m => m.classList.remove('selected'));
-        document.querySelector(`[data-method="${method}"]`).classList.add('selected');
+        const selectedMethodEl = document.querySelector(`[data-method="${method}"]`);
+        if (selectedMethodEl) {
+            selectedMethodEl.classList.add('selected');
+        }
 
         // Show appropriate QR/content
-        if (method === 'wechat') {
-            wechatQR.style.display = 'block';
-        } else if (method === 'alipay') {
-            wechatQR.style.display = 'block';
-            wechatQR.querySelector('.qr-placeholder i').className = 'fas fa-qrcode';
-            wechatQR.querySelector('.qr-placeholder span').textContent = '支付宝支付二维码';
-        } else if (method === 'card') {
-            wechatQR.style.display = 'none';
-            // In a real implementation, show credit card form
+        if (wechatQR) {
+            if (method === 'wechat' || method === 'alipay') {
+                wechatQR.style.display = 'block';
+                if (method === 'alipay') {
+                    const qrIcon = wechatQR.querySelector('.qr-placeholder i');
+                    const qrText = wechatQR.querySelector('.qr-placeholder span');
+                    if (qrIcon) qrIcon.className = 'fas fa-qrcode';
+                    if (qrText) qrText.textContent = '支付宝支付二维码';
+                } else {
+                    const qrIcon = wechatQR.querySelector('.qr-placeholder i');
+                    const qrText = wechatQR.querySelector('.qr-placeholder span');
+                    if (qrIcon) qrIcon.className = 'fas fa-qrcode';
+                    if (qrText) qrText.textContent = '微信支付二维码';
+                }
+            } else if (method === 'card') {
+                wechatQR.style.display = 'none';
+            }
         }
     }
 
-    // Confirm payment (demo)
-    confirmPaymentBtn.addEventListener('click', () => {
-        const tierNames = {
-            'pro': '专业版',
-            'team': '团队版'
-        };
+    // Initialize payment method
+    selectPaymentMethod('wechat');
 
-        const methodNames = {
-            'wechat': '微信支付',
-            'alipay': '支付宝',
-            'card': '信用卡'
-        };
+    // Confirm payment button
+    const confirmPaymentBtn = document.querySelector('#payment-modal .confirm-payment');
+    if (confirmPaymentBtn) {
+        confirmPaymentBtn.addEventListener('click', () => {
+            const tierNames = {
+                'pro': '专业版',
+                'team': '团队版'
+            };
 
-        // Show processing state
-        confirmPaymentBtn.disabled = true;
-        confirmPaymentBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 处理中...';
+            // Show processing state
+            confirmPaymentBtn.disabled = true;
+            confirmPaymentBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 处理中...';
 
-        // Simulate payment processing
-        setTimeout(() => {
-            paymentModal.classList.add('hidden');
-            confirmPaymentBtn.disabled = false;
-            confirmPaymentBtn.innerHTML = '确认支付';
+            // Simulate payment processing
+            setTimeout(() => {
+                closeModal();
+                confirmPaymentBtn.disabled = false;
+                confirmPaymentBtn.innerHTML = '确认支付';
 
-            // Show success message (in a real app, this would redirect to payment gateway)
-            showNotification({
-                type: 'success',
-                title: '支付成功！',
-                message: `感谢您升级到${tierNames[selectedTier]}！权限已激活，开始探索更多功能吧！`,
-                duration: 5000
-            });
+                // Show success message
+                showNotification({
+                    type: 'success',
+                    title: '支付成功！',
+                    message: `感谢您升级到${tierNames[selectedTier]}！权限已激活，开始探索更多功能吧！`,
+                    duration: 5000
+                });
+            }, 2000);
+        });
+    }
 
-            // In production, the user would be redirected to the payment provider
-            // and then back to the app with a success callback
-        }, 2000);
-    });
-
-    // Notification system (simple implementation)
+    // Notification system
     function showNotification({ type, title, message, duration = 5000 }) {
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
@@ -180,7 +210,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="notification-close">&times;</button>
         `;
 
-        // Styles
         Object.assign(notification.style, {
             position: 'fixed',
             top: '20px',
@@ -200,12 +229,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.body.appendChild(notification);
 
-        // Close button
-        notification.querySelector('.notification-close').addEventListener('click', () => {
-            notification.remove();
-        });
+        const closeBtn = notification.querySelector('.notification-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => notification.remove());
+        }
 
-        // Auto remove
         setTimeout(() => {
             if (notification.parentNode) {
                 notification.style.animation = 'fadeOut 0.3s ease-out';
@@ -214,48 +242,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }, duration);
     }
 
-    // Add animation styles dynamically
+    // Add animation styles
     const style = document.createElement('style');
     style.textContent = `
         @keyframes slideInRight {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
         @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
+            from { opacity: 1; } to { opacity: 0; }
         }
         .notification-close {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0;
-            line-height: 1;
+            background: none; border: none; color: white;
+            font-size: 1.5rem; cursor: pointer; padding: 0; line-height: 1;
         }
     `;
     document.head.appendChild(style);
 
-    // Initialize payment method
-    selectPaymentMethod('wechat');
-
-    // Google Auth buttons integration (placeholder)
-    // In a real implementation, this would integrate with auth-client.js
-    const authButtons = document.getElementById('auth-buttons');
-    if (authButtons) {
-        authButtons.innerHTML = `
-            <button class="btn btn-secondary" onclick="window.location.href='index.html'">
-                <i class="fas fa-user"></i> 登录
-            </button>
-        `;
-    }
-
-    console.log('Pricing page initialized. Billing toggle:', billingToggle.checked ? 'yearly' : 'monthly');
+    console.log('Pricing page initialized.');
 });
