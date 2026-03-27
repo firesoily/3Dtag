@@ -1,0 +1,44 @@
+name: Deploy 3Dtag Frontend to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# 只在前端文件变更时触发
+  # paths:
+  #   - '*.html'
+  #   - 'css/**'
+  #   - 'js/**'
+  #   - 'lib/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy to Cloudflare Pages
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (for any build steps if needed)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies (if any)
+        run: |
+          # 你的项目是无依赖的静态站点，无需构建
+          # 如果有构建步骤，在这里执行
+          echo "No build required - static HTML/CSS/JS"
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: '3dtag'
+          directory: '.'
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          wranglerVersion: '3'
