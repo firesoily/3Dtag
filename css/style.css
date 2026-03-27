@@ -65,15 +65,68 @@ body {
     font-weight: 700;
 }
 
-.header-links a {
+.logo a,
+.logo a:hover {
+    text-decoration: none;
     color: white;
-    font-size: 1.5rem;
-    opacity: 0.9;
-    transition: opacity 0.2s;
 }
 
-.header-links a:hover {
-    opacity: 1;
+/* Navigation */
+.nav {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.nav-link {
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+    padding: 0.5rem 0;
+    position: relative;
+    transition: color 0.2s;
+}
+
+.nav-link:hover {
+    color: white;
+}
+
+.nav-link.active {
+    color: white;
+}
+
+.nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: white;
+    border-radius: 1px;
+}
+
+/* Header Actions */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.pricing-cta {
+    background-color: var(--warning);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.pricing-cta:hover {
+    background-color: #d97706;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
 }
 
 /* User Menu (Auth UI) */
@@ -486,12 +539,105 @@ body {
 
 /* Footer */
 .footer {
+    background: var(--text-main);
+    color: white;
+    padding: 2rem 1rem 1rem;
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.footer-section h4 {
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.footer-section p {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}
+
+.footer-section ul {
+    list-style: none;
+}
+
+.footer-section ul li {
+    margin-bottom: 0.5rem;
+}
+
+.footer-section a {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+}
+
+.footer-section a:hover {
+    color: white;
+}
+
+.footer-bottom {
+    max-width: 1200px;
+    margin: 0 auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 1rem;
     text-align: center;
-    padding: 1rem;
-    background: var(--bg-white);
-    border-top: 1px solid var(--border);
-    color: var(--text-secondary);
+    color: rgba(255, 255, 255, 0.6);
     font-size: 0.85rem;
+}
+
+/* Pricing CTA Banner */
+.pricing-cta-banner {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    padding: 2rem 1rem;
+    text-align: center;
+    color: white;
+}
+
+.pricing-cta-banner .cta-content {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.pricing-cta-banner h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.pricing-cta-banner p {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.9;
+}
+
+.pricing-cta-banner .btn-large {
+    background-color: white;
+    color: var(--primary);
+    padding: 0.8rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.pricing-cta-banner .btn-large:hover {
+    background-color: var(--bg-light);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
 }
 
 .footer a {
@@ -590,6 +736,15 @@ body {
         font-size: 1.25rem;
     }
 
+    .nav {
+        display: none; /* 移动端隐藏导航链接，只保留升级按钮 */
+    }
+
+    .header-actions .pricing-cta {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.9rem;
+    }
+
     .main-container {
         padding: 1rem;
     }
@@ -602,6 +757,20 @@ body {
         flex-wrap: wrap;
         gap: 0.75rem;
         justify-content: center;
+    }
+
+    .footer-content {
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        text-align: center;
+    }
+
+    .pricing-cta-banner h3 {
+        font-size: 1.25rem;
+    }
+
+    .pricing-cta-banner p {
+        font-size: 0.9rem;
     }
 }
 

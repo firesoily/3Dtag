@@ -12,11 +12,19 @@
     <!-- Header -->
     <header class="header">
         <div class="logo">
-            <i class="fas fa-cloud"></i>
-            <h1>3Dtag</h1>
+            <a href="index.html"><i class="fas fa-cloud"></i></a>
+            <h1><a href="index.html">3Dtag</a></h1>
         </div>
-        <div class="header-links">
-            <!-- AuthUI will insert login button / user avatar here -->
+        <nav class="nav">
+            <a href="index.html" class="nav-link active">首页</a>
+            <a href="pricing.html" class="nav-link">定价</a>
+            <a href="#" class="nav-link">功能</a>
+            <a href="#" class="nav-link">示例</a>
+            <a href="#" class="nav-link">文档</a>
+        </nav>
+        <div class="header-actions">
+            <a href="pricing.html" class="btn btn-primary pricing-cta">升级</a>
+            <div id="auth-buttons"></div>
         </div>
     </header>
 
@@ -240,10 +248,51 @@
 
     <!-- Footer -->
     <footer class="footer">
-        <p>
-            3Dtag v1.0 |
-            <a href="#" id="help-link"><i class="fas fa-question-circle"></i> 使用帮助</a>
-        </p>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4><i class="fas fa-cloud"></i> 3Dtag</h4>
+                <p>让您的文字在三维空间中绽放</p>
+            </div>
+            <div class="footer-section">
+                <h4>产品</h4>
+                <ul>
+                    <li><a href="index.html">应用</a></li>
+                    <li><a href="pricing.html">定价</a></li>
+                    <li><a href="#">功能</a></li>
+                    <li><a href="#">示例</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>支持</h4>
+                <ul>
+                    <li><a href="#">文档</a></li>
+                    <li><a href="#">API 参考</a></li>
+                    <li><a href="#">常见问题</a></li>
+                    <li><a href="#">联系我们</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>法律</h4>
+                <ul>
+                    <li><a href="#">服务条款</a></li>
+                    <li><a href="#">隐私政策</a></li>
+                    <li><a href="#">Cookie 政策</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 3Dtag. 保留所有权利。Made with ❤️ by 小火</p>
+        </div>
+        <!-- Pricing CTA Banner -->
+        <div class="pricing-cta-banner">
+            <div class="cta-content">
+                <h3>准备好解锁更多功能了吗？</h3>
+                <p>升级到专业版，获得 200+ 标签、4K 导出、2GB 云存储等高级功能</p>
+                <a href="pricing.html" class="btn btn-primary btn-large">
+                    <i class="fas fa-star"></i> 查看定价方案
+                </a>
+            </div>
+        </div>
     </footer>
 
     <!-- Scripts -->
