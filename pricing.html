@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3Dtag - 定价</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/pricing.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <i class="fas fa-cloud"></i>
+            <a href="index.html"><h1>3Dtag</h1></a>
+        </div>
+        <nav class="nav">
+            <a href="index.html" class="nav-link">首页</a>
+            <a href="pricing.html" class="nav-link active">定价</a>
+            <a href="#" class="nav-link">功能</a>
+            <a href="#" class="nav-link">示例</a>
+            <a href="#" class="nav-link">文档</a>
+        </nav>
+        <div class="header-actions">
+            <a href="index.html" class="btn btn-secondary">返回应用</a>
+            <div id="auth-buttons"></div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Hero Section -->
+        <section class="hero">
+            <h1>选择适合您的方案</h1>
+            <p class="subtitle">
+                无论是个人创作还是团队协作，3Dtag 都能满足您的需求。<br>
+                所有方案均包含核心 3D 标签云生成功能。
+            </p>
+            <div class="toggle-container">
+                <span class="toggle-label">月付</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="billing-toggle">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label">年付 <span class="discount-badge">省 20%</span></span>
+            </div>
+        </section>
+
+        <!-- Pricing Cards -->
+        <section class="pricing-grid">
+            <!-- Free Tier -->
+            <div class="pricing-card">
+                <div class="card-header">
+                    <h2>免费版</h2>
+                    <p class="tagline">适合偶尔使用的个人</p>
+                </div>
+                <div class="price">
+                    <span class="currency">¥</span>
+                    <span class="amount">0</span>
+                    <span class="period">/月</span>
+                </div>
+                <ul class="features">
+                    <li><i class="fas fa-check"></i> 最多 50 个标签</li>
+                    <li><i class="fas fa-check"></i> 最近 10 次历史记录</li>
+                    <li><i class="fas fa-check"></i> PNG + SVG 导出</li>
+                    <li><i class="fas fa-check"></i> 1x-2x 分辨率</li>
+                    <li><i class="fas fa-check"></i> 5 个预设主题</li>
+                    <li><i class="fas fa-check"></i> 基础搜索过滤</li>
+                    <li><i class="fas fa-check"></i> 50MB 云存储</li>
+                    <li class="disabled"><i class="fas fa-times"></i> 自定义主题</li>
+                    <li class="disabled"><i class="fas fa-times"></i> 协作功能</li>
+                    <li class="disabled"><i class="fas fa-times"></i> API 访问</li>
+                </ul>
+                <button class="btn btn-secondary full-width" disabled>当前方案</button>
+            </div>
+
+            <!-- Pro Tier -->
+            <div class="pricing-card popular">
+                <div class="popular-badge">最受欢迎</div>
+                <div class="card-header">
+                    <h2>专业版</h2>
+                    <p class="tagline">适合内容创作者和自由职业者</p>
+                </div>
+                <div class="price">
+                    <span class="currency">¥</span>
+                    <span class="amount monthly">29</span>
+                    <span class="amount yearly" style="display:none">23</span>
+                    <span class="period">/月</span>
+                </div>
+                <ul class="features">
+                    <li><i class="fas fa-check"></i> 最多 200 个标签</li>
+                    <li><i class="fas fa-check"></i> 无限历史记录</li>
+                    <li><i class="fas fa-check"></i> PNG + SVG 导出</li>
+                    <li><i class="fas fa-check"></i> 1x-4x 分辨率</li>
+                    <li><i class="fas fa-check"></i> 无限自定义主题</li>
+                    <li><i class="fas fa-check"></i> 高级搜索与过滤</li>
+                    <li><i class="fas fa-check"></i> 2GB 云存储</li>
+                    <li><i class="fas fa-check"></i> 邮件优先支持</li>
+                    <li class="disabled"><i class="fas fa-times"></i> 协作功能</li>
+                    <li class="disabled"><i class="fas fa-times"></i> API 访问</li>
+                </ul>
+                <button class="btn btn-primary full-width upgrade-btn" data-tier="pro">升级到专业版</button>
+            </div>
+
+            <!-- Team Tier -->
+            <div class="pricing-card">
+                <div class="card-header">
+                    <h2>团队版</h2>
+                    <p class="tagline">适合小型团队和初创公司</p>
+                </div>
+                <div class="price">
+                    <span class="currency">¥</span>
+                    <span class="amount monthly">79</span>
+                    <span class="amount yearly" style="display:none">63</span>
+                    <span class="period">/月</span>
+                </div>
+                <ul class="features">
+                    <li><i class="fas fa-check"></i> 最多 500 个标签</li>
+                    <li><i class="fas fa-check"></i> 无限历史记录</li>
+                    <li><i class="fas fa-check"></i> PNG + SVG + PDF 导出</li>
+                    <li><i class="fas fa-check"></i> 1x-8x 分辨率</li>
+                    <li><i class="fas fa-check"></i> 无限自定义主题</li>
+                    <li><i class="fas fa-check"></i> 高级搜索与分析</li>
+                    <li><i class="fas fa-check"></i> 50GB 云存储</li>
+                    <li><i class="fas fa-check"></i> 实时聊天支持</li>
+                    <li><i class="fas fa-check"></i> 5人协作 (可增购)</li>
+                    <li><i class="fas fa-check"></i> 1000次 API/月</li>
+                </ul>
+                <button class="btn btn-primary full-width upgrade-btn" data-tier="team">升级到团队版</button>
+            </div>
+
+            <!-- Enterprise Tier -->
+            <div class="pricing-card">
+                <div class="card-header">
+                    <h2>企业版</h2>
+                    <p class="tagline">适合大规模组织和定制需求</p>
+                </div>
+                <div class="price">
+                    <span class="amount">定制</span>
+                </div>
+                <ul class="features">
+                    <li><i class="fas fa-check"></i> 无限标签数量</li>
+                    <li><i class="fas fa-check"></i> 无限历史记录</li>
+                    <li><i class="fas fa-check"></i> 全格式导出 + 品牌定制</li>
+                    <li><i class="fas fa-check"></i> 任意分辨率</li>
+                    <li><i class="fas fa-check"></i> 无限自定义主题</li>
+                    <li><i class="fas fa-check"></i> 高级分析与报告</li>
+                    <li><i class="fas fa-check"></i> 无限云存储</li>
+                    <li><i class="fas fa-check"></i> 专属客户经理</li>
+                    <li><i class="fas fa-check"></i> 无限协作成员</li>
+                    <li><i class="fas fa-check"></i> 无限 API 访问</li>
+                </ul>
+                <button class="btn btn-secondary full-width contact-sales">联系销售</button>
+            </div>
+        </section>
+
+        <!-- Feature Comparison Table -->
+        <section class="comparison-section">
+            <h2>功能对比表</h2>
+            <div class="table-wrapper">
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>功能</th>
+                            <th>免费版</th>
+                            <th>专业版</th>
+                            <th>团队版</th>
+                            <th>企业版</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>标签数量上限</td>
+                            <td>50</td>
+                            <td>200</td>
+                            <td>500</td>
+                            <td>无限</td>
+                        </tr>
+                        <tr>
+                            <td>历史记录</td>
+                            <td>最近 10 次</td>
+                            <td>无限</td>
+                            <td>无限</td>
+                            <td>无限</td>
+                        </tr>
+                        <tr>
+                            <td>导出格式</td>
+                            <td>PNG + SVG</td>
+                            <td>PNG + SVG</td>
+                            <td>PNG + SVG + PDF</td>
+                            <td>全格式 + 品牌定制</td>
+                        </tr>
+                        <tr>
+                            <td>最大分辨率</td>
+                            <td>2x</td>
+                            <td>4x</td>
+                            <td>8x</td>
+                            <td>自定义</td>
+                        </tr>
+                        <tr>
+                            <td>自定义主题</td>
+                            <td>✗</td>
+                            <td>✅ (5个)</td>
+                            <td>✅ (无限)</td>
+                            <td>✅ (品牌定制)</td>
+                        </tr>
+                        <tr>
+                            <td>云存储空间</td>
+                            <td>50MB</td>
+                            <td>2GB</td>
+                            <td>50GB</td>
+                            <td>无限</td>
+                        </tr>
+                        <tr>
+                            <td>搜索功能</td>
+                            <td>基础</td>
+                            <td>高级</td>
+                            <td>高级 + 分析</td>
+                            <td>企业级分析</td>
+                        </tr>
+                        <tr>
+                            <td>协作成员</td>
+                            <td>✗</td>
+                            <td>✗</td>
+                            <td>5人 (可增购)</td>
+                            <td>无限</td>
+                        </tr>
+                        <tr>
+                            <td>API 调用</td>
+                            <td>✗</td>
+                            <td>✗</td>
+                            <td>1000次/月</td>
+                            <td>无限</td>
+                        </tr>
+                        <tr>
+                            <td>技术支持</td>
+                            <td>社区论坛</td>
+                            <td>邮件支持</td>
+                            <td>实时聊天</td>
+                            <td>专属经理</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section class="faq-section">
+            <h2>常见问题</h2>
+            <div class="faq-grid">
+                <div class="faq-item">
+                    <h3><i class="fas fa-question-circle"></i> 免费版有水印吗？</h3>
+                    <p>没有。所有方案导出的图片和 SVG 都不含水印，您可以自由使用。</p>
+                </div>
+                <div class="faq-item">
+                    <h3><i class="fas fa-question-circle"></i> 可以随时升级或降级吗？</h3>
+                    <p>可以。升级立即生效，降级在当前计费周期结束后生效。您随时可以取消订阅。</p>
+                </div>
+                <div class="faq-item">
+                    <h3><i class="fas fa-question-circle"></i> 云存储空间用来做什么？</h3>
+                    <p>用于保存您的标签云配置、设定、历史记录，以及跨设备同步数据。免费版 50MB 足够存储数千个标签云。</p>
+                </div>
+                <div class="faq-item">
+                    <h3><i class="fas fa-question-circle"></i> API 可以做什么？</h3>
+                    <p>API 允许您在自己的应用或网站中集成 3Dtag 的标签云生成功能。详细的 API 文档会在购买团队版后提供。</p>
+                </div>
+                <div class="faq-item">
+                    <h3><i class="fas fa-question-circle"></i> 支持哪些支付方式？</h3>
+                    <p>我们支持支付宝、微信支付、信用卡（Visa/MasterCard/银联）。所有支付均通过加密通道处理。</p>
+                </div>
+                <div class="faq-item">
+                    <h3><i class="fas fa-question-circle"></i> 有退款政策吗？</h3>
+                    <p>我们提供 14 天无条件退款保证。如果您对购买的专业版或团队版不满意，可在 14 天内申请全额退款。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="cta-section">
+            <h2>准备好开始创作了吗？</h2>
+            <p>立即注册，免费使用 3Dtag，或选择专业版解锁全部功能。</p>
+            <div class="cta-buttons">
+                <a href="index.html" class="btn btn-primary btn-large">免费开始</a>
+                <a href="#" class="btn btn-secondary btn-large contact-sales">联系销售</a>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4><i class="fas fa-cloud"></i> 3Dtag</h4>
+                <p>让您的文字在三维空间中绽放</p>
+            </div>
+            <div class="footer-section">
+                <h4>产品</h4>
+                <ul>
+                    <li><a href="index.html">应用</a></li>
+                    <li><a href="pricing.html">定价</a></li>
+                    <li><a href="#">功能</a></li>
+                    <li><a href="#">示例</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>支持</h4>
+                <ul>
+                    <li><a href="#">文档</a></li>
+                    <li><a href="#">API 参考</a></li>
+                    <li><a href="#">常见问题</a></li>
+                    <li><a href="#">联系我们</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>法律</h4>
+                <ul>
+                    <li><a href="#">服务条款</a></li>
+                    <li><a href="#">隐私政策</a></li>
+                    <li><a href="#">Cookie 政策</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 3Dtag. 保留所有权利。Made with ❤️ by 小火</p>
+        </div>
+    </footer>
+
+    <!-- Payment Modal (dummy for demo) -->
+    <div id="payment-modal" class="modal hidden">
+        <div class="modal-content large">
+            <button class="modal-close">&times;</button>
+            <h2 id="modal-title">升级到专业版</h2>
+            <div class="modal-body">
+                <div class="payment-summary">
+                    <div class="summary-row">
+                        <span>方案</span>
+                        <span id="summary-tier">专业版</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>计费周期</span>
+                        <span id="summary-cycle">月付</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>总计</span>
+                        <span id="summary-price">¥29/月</span>
+                    </div>
+                </div>
+                <div class="payment-form">
+                    <h3>选择支付方式</h3>
+                    <div class="payment-methods">
+                        <button class="payment-method selected">
+                            <i class="fab fa-weixin"></i>
+                            <span>微信支付</span>
+                        </button>
+                        <button class="payment-method">
+                            <i class="fab fa-alipay"></i>
+                            <span>支付宝</span>
+                        </button>
+                        <button class="payment-method">
+                            <i class="fas fa-credit-card"></i>
+                            <span>信用卡</span>
+                        </button>
+                    </div>
+                    <div id="wechat-qr" class="qr-section">
+                        <p>请使用微信扫描二维码完成支付</p>
+                        <div class="qr-placeholder">
+                            <i class="fas fa-qrcode"></i>
+                            <span>微信支付二维码</span>
+                        </div>
+                        <p class="note">支付成功后，系统将在 1-2 分钟内激活您的专业版权限。</p>
+                    </div>
+                    <button class="btn btn-primary btn-large full-width confirm-payment">确认支付</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="src/auth/auth-client.js"></script>
+    <script src="src/auth/auth-ui.js"></script>
+    <script src="js/text-processor.js"></script>
+    <script src="js/tagcanvas-wrapper.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/pricing.js"></script>
+</body>
+</html>
